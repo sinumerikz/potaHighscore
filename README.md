@@ -90,8 +90,6 @@ mode; live mode queries `api.pota.app` directly instead.
 
 - **Unofficial API**: `api.pota.app` is undocumented; endpoints and field names may change at any
   time. If something looks off, check the "Debug / raw data" section for the raw API response.
-- **No P2P (park-to-park) numbers**: the endpoint used doesn't provide this, so the tool shows a
-  CW/SSB/Digital breakdown instead.
 - **Minimum QSO rule applied**: activations with fewer than 10 QSOs don't officially count per
   POTA rules and are excluded everywhere, to match the official leaderboard.
 - **Snapshot is a sample, not a full census**: except for Germany, only the top 150 parks per

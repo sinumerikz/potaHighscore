@@ -621,11 +621,12 @@ function baseCallsign(call){
 }
 
 function aggregateActivations(activations, {dateFilter, filterSet}){
-  const agg = {}; // call -> {activations:Set, qsos:0, cw:0, ssb:0, digi:0, actCw:Set, actSsb:Set, actDigi:Set}
+  const agg = {}; // call -> {activations:Set, qsos:0, cw:0, ssb:0, digi:0, actCw:Set, actSsb:Set, actDigi:Set, parks:{ref:count}}
   function ensure(call){
     if(!agg[call]) agg[call] = {
       activations:new Set(), qsos:0, cw:0, ssb:0, digi:0,
-      actCw:new Set(), actSsb:new Set(), actDigi:new Set()
+      actCw:new Set(), actSsb:new Set(), actDigi:new Set(),
+      parks:{}
     };
     return agg[call];
   }
@@ -671,6 +672,7 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
       entry.cw += cwCount;
       entry.ssb += ssbCount;
       entry.digi += digiCount;
+      if(ref) entry.parks[ref] = (entry.parks[ref] || 0) + 1;
     }
     // Eine Aktivierung zählt für einen Mode, sobald mindestens 1 QSO in
     // diesem Mode dabei war (eine Aktivierung kann mehrere Modes umfassen).
@@ -679,11 +681,18 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
     if(digiCount > 0) entry.actDigi.add(actKey);
   }
 
-  const rows = Object.entries(agg).map(([call, v]) => ({
-    call, activations: v.activations.size, qsos: v.qsos,
-    cw: v.cw, ssb: v.ssb, digi: v.digi,
-    actCw: v.actCw.size, actSsb: v.actSsb.size, actDigi: v.actDigi.size
-  }));
+  const rows = Object.entries(agg).map(([call, v]) => {
+    let topPark = null, topParkCount = 0;
+    for(const [ref, cnt] of Object.entries(v.parks)){
+      if(cnt > topParkCount){ topPark = ref; topParkCount = cnt; }
+    }
+    return {
+      call, activations: v.activations.size, qsos: v.qsos,
+      cw: v.cw, ssb: v.ssb, digi: v.digi,
+      actCw: v.actCw.size, actSsb: v.actSsb.size, actDigi: v.actDigi.size,
+      topPark, topParkCount
+    };
+  });
 
   return {rows, firstSample};
 }
@@ -932,6 +941,13 @@ function modeBadges(r){
   return parts.length ? `<div class="mode-badges">${parts.join('')}</div>` : '';
 }
 
+function topParkLine(r){
+  if(!r.topPark) return '';
+  const label = L('Meist aktivierter Park', 'Most activated park');
+  const times = L('×', '×');
+  return `<div class="mode-badges"><span title="${label}">🏞️ <a href="https://pota.app/#/park/${encodeURIComponent(r.topPark)}" target="_blank" rel="noopener" class="call-link">${r.topPark}</a> (${r.topParkCount}${times})</span></div>`;
+}
+
 const PAGE_SIZE = 25;
 const tableState = {}; // tbodyId -> {rows, field, page}
 
@@ -958,7 +974,7 @@ function renderPage(tbodyId){
     tr.dataset.call = r.call;
     tr.innerHTML = `
       <td class="rank">${medals[rank] || (rank+1)}</td>
-      <td class="call"><a href="https://pota.app/#/profile/${encodeURIComponent(r.call)}" target="_blank" rel="noopener" class="call-link">${r.call}</a>${modeBadges(r)}</td>
+      <td class="call"><a href="https://pota.app/#/profile/${encodeURIComponent(r.call)}" target="_blank" rel="noopener" class="call-link">${r.call}</a>${modeBadges(r)}${topParkLine(r)}</td>
       <td class="num">${fmtNum(r[field])}</td>
     `;
     tbody.appendChild(tr);

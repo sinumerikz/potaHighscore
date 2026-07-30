@@ -836,6 +836,7 @@ async function run(){
 
       const allActs = [];
       let done = 0;
+      let fetchErrors = 0;
       const LIVE_CONCURRENCY = 8; // gleichzeitige Requests im Live-Modus
 
       async function fetchOnePark(park){
@@ -848,7 +849,7 @@ async function run(){
             allActs.push(...acts);
           }
         }catch(e){
-          // einzelnen Park überspringen, wenn die Abfrage fehlschlägt
+          fetchErrors++; // einzelnen Park überspringen, wenn die Abfrage fehlschlägt
         }
         done++;
         setProgress(15 + Math.round((done/activated.length)*80),
@@ -869,7 +870,8 @@ async function run(){
       );
 
       ({rows, firstSample} = aggregateActivations(allActs, {dateFilter, filterSet}));
-      statusExtra = L(`${activated.length} Parks live abgefragt.`, `${activated.length} parks queried live.`);
+      statusExtra = L(`${activated.length} Parks live abgefragt.`, `${activated.length} parks queried live.`)
+        + (fetchErrors > 0 ? L(` (${fetchErrors} Fehler)`, ` (${fetchErrors} errors)`) : '');
     }
 
     debugOut.textContent = firstSample ? JSON.stringify(firstSample, null, 2) : L('Keine Aktivierungsdaten erhalten.', 'No activation data received.');

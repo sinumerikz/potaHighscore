@@ -804,10 +804,9 @@ async function run(){
 
       let activated = [];
       const failedCountries = [];
-      for(let i = 0; i < countryList.length; i++){
-        const cc = countryList[i];
-        setProgress(4 + Math.round((i/countryList.length)*10),
-          L(`Lade Parkliste: Land ${i+1}/${countryList.length} (${cc}) …`, `Loading park list: country ${i+1}/${countryList.length} (${cc}) …`));
+      let countriesDone = 0;
+      setProgress(4, L('Lade Parklisten …', 'Loading park lists …'));
+      await Promise.all(countryList.map(async cc => {
         try{
           const parks = await fetchJson(`${API}/program/parks/${encodeURIComponent(cc)}`);
           if(Array.isArray(parks) && parks.length > 0){
@@ -818,7 +817,10 @@ async function run(){
         }catch(e){
           failedCountries.push(cc);
         }
-      }
+        countriesDone++;
+        setProgress(4 + Math.round((countriesDone/countryList.length)*10),
+          L(`Lade Parklisten … (${countriesDone}/${countryList.length})`, `Loading park lists … (${countriesDone}/${countryList.length})`));
+      }));
 
       if(activated.length === 0){
         throw new Error(countryList.length > 1
@@ -834,26 +836,37 @@ async function run(){
 
       const allActs = [];
       let done = 0;
-      for(const park of activated){
+      const LIVE_CONCURRENCY = 8; // gleichzeitige Requests im Live-Modus
+
+      async function fetchOnePark(park){
         const ref = pick(park, ['reference','ref'], null);
-        if(!ref) { done++; continue; }
-
-        setProgress(15 + Math.round((done/activated.length)*80),
-          L(`Lade Aktivierungen: ${park.name || ref} (${done+1}/${activated.length})`, `Loading activations: ${park.name || ref} (${done+1}/${activated.length})`));
-
-        let acts = [];
+        if(!ref) return;
         try{
-          acts = await fetchJson(`${API}/park/activations/${encodeURIComponent(ref)}?count=all`);
+          const acts = await fetchJson(`${API}/park/activations/${encodeURIComponent(ref)}?count=all`);
+          if(Array.isArray(acts)){
+            acts.forEach(a => { a._parkRef = ref; });
+            allActs.push(...acts);
+          }
         }catch(e){
-          done++;
-          continue;
-        }
-        if(Array.isArray(acts)){
-          acts.forEach(a => { a._parkRef = ref; });
-          allActs.push(...acts);
+          // einzelnen Park überspringen, wenn die Abfrage fehlschlägt
         }
         done++;
+        setProgress(15 + Math.round((done/activated.length)*80),
+          L(`Lade Aktivierungen … (${done}/${activated.length})`, `Loading activations … (${done}/${activated.length})`));
       }
+
+      // Einfacher Concurrency-Pool: LIVE_CONCURRENCY parallele "Worker",
+      // die sich gemeinsam durch die Parkliste arbeiten.
+      let nextIdx = 0;
+      async function worker(){
+        while(nextIdx < activated.length){
+          const park = activated[nextIdx++];
+          await fetchOnePark(park);
+        }
+      }
+      await Promise.all(
+        Array.from({length: Math.min(LIVE_CONCURRENCY, activated.length)}, worker)
+      );
 
       ({rows, firstSample} = aggregateActivations(allActs, {dateFilter, filterSet}));
       statusExtra = L(`${activated.length} Parks live abgefragt.`, `${activated.length} parks queried live.`);

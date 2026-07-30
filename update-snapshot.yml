@@ -1,0 +1,40 @@
+name: POTA Snapshot aktualisieren
+
+on:
+  schedule:
+    # Täglich um 04:15 UTC (~06:15 MESZ / 05:15 MEZ)
+    - cron: '15 4 * * *'
+  workflow_dispatch: {}   # erlaubt manuelles Auslösen über den "Actions"-Tab
+
+permissions:
+  contents: write
+
+jobs:
+  update-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Abhängigkeiten installieren
+        run: pip install requests
+
+      - name: Snapshot erzeugen
+        run: python3 scripts/update_snapshot.py
+
+      - name: Änderungen committen (falls vorhanden)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pota-snapshot.json
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen am Snapshot."
+          else
+            git commit -m "Automatisches Update: POTA-Snapshot ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push
+          fi

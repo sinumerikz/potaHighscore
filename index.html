@@ -184,6 +184,13 @@
         </select>
       </div>
       <div class="field">
+        <label for="dataSource">Datenquelle</label>
+        <select id="dataSource">
+          <option value="snapshot">🚀 Statischer Tages-Snapshot (schnell, bis zu 24 Std. alt)</option>
+          <option value="live">🔴 Live von der POTA-API (aktuell, aber viele Requests/langsam)</option>
+        </select>
+      </div>
+      <div class="field">
         <button id="loadBtn">Highscore laden</button>
       </div>
     </div>
@@ -453,11 +460,63 @@ function baseCallsign(call){
   return (call || '').toUpperCase().split('/')[0];
 }
 
+function aggregateActivations(activations, {dateFilter, filterSet}){
+  const agg = {}; // call -> {activations:Set, qsos:0, cw:0, ssb:0, digi:0}
+  function ensure(call){
+    if(!agg[call]) agg[call] = {activations:new Set(), qsos:0, cw:0, ssb:0, digi:0};
+    return agg[call];
+  }
+
+  let firstSample = null;
+
+  for(const act of activations){
+    if(!firstSample) firstSample = act;
+
+    const dateStr = pick(act, ['date','qso_date','qsoDate','activationDate'], null);
+    let d = null;
+    if(dateStr){
+      if(/^\d{8}$/.test(dateStr)){
+        d = new Date(`${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`);
+      } else {
+        d = new Date(dateStr);
+      }
+    }
+    if(dateFilter && d && !isNaN(d) && !dateFilter(d)) continue;
+
+    const callRaw = pick(act, ['activeCallsign','activator','callsign','call'], null);
+    if(!callRaw) continue;
+    const call = baseCallsign(callRaw);
+
+    if(filterSet && !filterSet.has(call)) continue;
+
+    const qsoCount = Number(pick(act, ['totalQSOs','qsoCount','qsos','total_qso'], 0)) || 0;
+    const cwCount = Number(pick(act, ['qsosCW'], 0)) || 0;
+    const ssbCount = Number(pick(act, ['qsosPHONE','qsosSSB'], 0)) || 0;
+    const digiCount = Number(pick(act, ['qsosDATA','qsosDIGI'], 0)) || 0;
+    const ref = act._parkRef || pick(act, ['reference','park','parkRef'], '');
+    const actKey = ref + '|' + (dateStr || '') + '|' + call;
+
+    const entry = ensure(call);
+    entry.activations.add(actKey);
+    entry.qsos += qsoCount;
+    entry.cw += cwCount;
+    entry.ssb += ssbCount;
+    entry.digi += digiCount;
+  }
+
+  const rows = Object.entries(agg).map(([call, v]) => ({
+    call, activations: v.activations.size, qsos: v.qsos,
+    cw: v.cw, ssb: v.ssb, digi: v.digi
+  }));
+
+  return {rows, firstSample};
+}
+
 async function run(){
   loadBtn.disabled = true;
   resultsPanel.style.display = 'none';
   setStatus('');
-  setProgress(2, 'Lade Parkliste …');
+  setProgress(2, 'Starte …');
 
   try{
     const isWorld = countrySel.value === '__world';
@@ -480,6 +539,7 @@ async function run(){
     const limit = parseInt(document.getElementById('limit').value, 10);
     const tf = document.getElementById('timeframe').value;
     const dateFilter = makeDateFilter(tf);
+    const dataSource = document.getElementById('dataSource').value;
 
     const useFilter = document.getElementById('useCallFilter').checked;
     let filterSet = null;
@@ -491,114 +551,99 @@ async function run(){
       setStatus(`Rufzeichen-Filter aktiv (${res.source}): ${filterSet.size} Rufzeichen erkannt (z.B. ${sample} …)`);
     }
 
-    // 1) Parkliste(n) laden und pro Land die aktivsten Parks auswählen.
-    // (Wichtig: NICHT über mehrere Länder kombiniert sortieren, sonst
-    // dominieren große Länder wie die USA und kleine Länder wie DE fallen
-    // komplett raus, obwohl dort z.B. die gefilterten Rufzeichen aktiv sind.)
-    function topActivatedParks(parks, n){
-      return parks
-        .filter(p => (pick(p, ['activations','activationCount'], 0) > 0))
-        .sort((a,b) => pick(b,['activations','activationCount'],0) - pick(a,['activations','activationCount'],0))
-        .slice(0, n);
-    }
+    let rows, firstSample, statusExtra = '';
 
-    let activated = [];
-    const failedCountries = [];
-    for(let i = 0; i < countryList.length; i++){
-      const cc = countryList[i];
-      setProgress(4 + Math.round((i/countryList.length)*10),
-        `Lade Parkliste: Land ${i+1}/${countryList.length} (${cc}) …`);
+    if(dataSource === 'snapshot'){
+      // --- Statischer Tages-Snapshot aus data/pota-snapshot.json (liegt im selben Repo) ---
+      setProgress(20, 'Lade statischen Snapshot …');
+      let snap;
       try{
-        const parks = await fetchJson(`${API}/program/parks/${encodeURIComponent(cc)}`);
-        if(Array.isArray(parks) && parks.length > 0){
-          activated = activated.concat(topActivatedParks(parks, limit));
-        } else {
+        const res = await fetch('./data/pota-snapshot.json', {cache:'no-store'});
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        snap = await res.json();
+      }catch(e){
+        throw new Error('Snapshot (data/pota-snapshot.json) konnte nicht geladen werden. Wurde der GitHub-Actions-Workflow schon einmal ausgeführt? Alternativ oben auf "🔴 Live von der POTA-API" umschalten.');
+      }
+
+      const missing = countryList.filter(cc => !snap.countries_ok.includes(cc));
+      if(missing.length > 0){
+        setStatus(`Hinweis: Diese Länder sind nicht im Snapshot enthalten und werden ignoriert: ${missing.join(', ')}. Für diese Länder bitte "Live von der POTA-API" nutzen.`);
+      }
+
+      const relevant = isWorld
+        ? snap.activations
+        : snap.activations.filter(a => countryList.includes(a._country));
+
+      setProgress(70, 'Werte Snapshot aus …');
+      ({rows, firstSample} = aggregateActivations(relevant, {dateFilter, filterSet}));
+
+      const genDate = new Date(snap.generated_at);
+      statusExtra = `Snapshot-Stand: ${isNaN(genDate) ? snap.generated_at : genDate.toLocaleString('de-DE')} · ${snap.parks_per_country} Parks/Land`;
+
+    } else {
+      // --- Live-Abfrage direkt bei api.pota.app ---
+      function topActivatedParks(parks, n){
+        return parks
+          .filter(p => (pick(p, ['activations','activationCount'], 0) > 0))
+          .sort((a,b) => pick(b,['activations','activationCount'],0) - pick(a,['activations','activationCount'],0))
+          .slice(0, n);
+      }
+
+      let activated = [];
+      const failedCountries = [];
+      for(let i = 0; i < countryList.length; i++){
+        const cc = countryList[i];
+        setProgress(4 + Math.round((i/countryList.length)*10),
+          `Lade Parkliste: Land ${i+1}/${countryList.length} (${cc}) …`);
+        try{
+          const parks = await fetchJson(`${API}/program/parks/${encodeURIComponent(cc)}`);
+          if(Array.isArray(parks) && parks.length > 0){
+            activated = activated.concat(topActivatedParks(parks, limit));
+          } else {
+            failedCountries.push(cc);
+          }
+        }catch(e){
           failedCountries.push(cc);
         }
-      }catch(e){
-        failedCountries.push(cc);
       }
-    }
 
-    if(activated.length === 0){
-      throw new Error(countryList.length > 1
-        ? `Keine Parks für die Länder "${countryLabel}" gefunden. Kürzel prüfen (z.B. DE, US, GB).`
-        : `Keine Parks für "${countryLabel}" gefunden. Kürzel prüfen (z.B. DE, US, GB, JA-Prefix etc.).`);
-    }
-    if(failedCountries.length > 0 && countryList.length > 1){
-      setStatus(`Hinweis: Für folgende Kürzel wurden keine Parks gefunden und sie wurden übersprungen: ${failedCountries.join(', ')}`);
-    }
-
-    // Aggregation je Rufzeichen
-    const agg = {}; // call -> {activations:Set, qsos:0, cw:0, ssb:0, digi:0}
-    function ensure(call){
-      if(!agg[call]) agg[call] = {activations:new Set(), qsos:0, cw:0, ssb:0, digi:0};
-      return agg[call];
-    }
-
-    let firstSample = null;
-    let done = 0;
-
-    for(const park of activated){
-      const ref = pick(park, ['reference','ref'], null);
-      if(!ref) { done++; continue; }
-
-      setProgress(15 + Math.round((done/activated.length)*80),
-        `Lade Aktivierungen: ${park.name || ref} (${done+1}/${activated.length})`);
-
-      let acts = [];
-      try{
-        acts = await fetchJson(`${API}/park/activations/${encodeURIComponent(ref)}?count=all`);
-      }catch(e){
-        // Park überspringen, wenn Endpoint für diesen Park fehlschlägt
-        done++;
-        continue;
+      if(activated.length === 0){
+        throw new Error(countryList.length > 1
+          ? `Keine Parks für die Länder "${countryLabel}" gefunden. Kürzel prüfen (z.B. DE, US, GB).`
+          : `Keine Parks für "${countryLabel}" gefunden. Kürzel prüfen (z.B. DE, US, GB, JA-Prefix etc.).`);
       }
-      if(!Array.isArray(acts)) acts = [];
+      if(failedCountries.length > 0 && countryList.length > 1){
+        setStatus(`Hinweis: Für folgende Kürzel wurden keine Parks gefunden und sie wurden übersprungen: ${failedCountries.join(', ')}`);
+      }
 
-      for(const act of acts){
-        if(!firstSample) firstSample = act;
+      const allActs = [];
+      let done = 0;
+      for(const park of activated){
+        const ref = pick(park, ['reference','ref'], null);
+        if(!ref) { done++; continue; }
 
-        const dateStr = pick(act, ['date','qso_date','qsoDate','activationDate'], null);
-        let d = null;
-        if(dateStr){
-          if(/^\d{8}$/.test(dateStr)){
-            // Format YYYYMMDD (z.B. "20260725")
-            d = new Date(`${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`);
-          } else {
-            d = new Date(dateStr);
-          }
+        setProgress(15 + Math.round((done/activated.length)*80),
+          `Lade Aktivierungen: ${park.name || ref} (${done+1}/${activated.length})`);
+
+        let acts = [];
+        try{
+          acts = await fetchJson(`${API}/park/activations/${encodeURIComponent(ref)}?count=all`);
+        }catch(e){
+          done++;
+          continue;
         }
-        if(dateFilter && d && !isNaN(d) && !dateFilter(d)) continue;
-
-        const callRaw = pick(act, ['activeCallsign','activator','callsign','call'], null);
-        if(!callRaw) continue;
-        const call = baseCallsign(callRaw);
-
-        if(filterSet && !filterSet.has(call)) continue;
-
-        const qsoCount = Number(pick(act, ['totalQSOs','qsoCount','qsos','total_qso'], 0)) || 0;
-        const cwCount = Number(pick(act, ['qsosCW'], 0)) || 0;
-        const ssbCount = Number(pick(act, ['qsosPHONE','qsosSSB'], 0)) || 0;
-        const digiCount = Number(pick(act, ['qsosDATA','qsosDIGI'], 0)) || 0;
-        const actKey = ref + '|' + (dateStr || '') + '|' + call;
-
-        const entry = ensure(call);
-        entry.activations.add(actKey);
-        entry.qsos += qsoCount;
-        entry.cw += cwCount;
-        entry.ssb += ssbCount;
-        entry.digi += digiCount;
+        if(Array.isArray(acts)){
+          acts.forEach(a => { a._parkRef = ref; });
+          allActs.push(...acts);
+        }
+        done++;
       }
-      done++;
+
+      ({rows, firstSample} = aggregateActivations(allActs, {dateFilter, filterSet}));
+      statusExtra = `${activated.length} Parks live abgefragt.`;
     }
 
     debugOut.textContent = firstSample ? JSON.stringify(firstSample, null, 2) : 'Keine Aktivierungsdaten erhalten.';
-
-    const rows = Object.entries(agg).map(([call, v]) => ({
-      call, activations: v.activations.size, qsos: v.qsos,
-      cw: v.cw, ssb: v.ssb, digi: v.digi
-    }));
 
     if(rows.length === 0){
       setProgress(100, 'Fertig.');
@@ -611,7 +656,7 @@ async function run(){
 
     resultsTitle.textContent = `Highscore – ${countryLabel}` + (filterSet ? ' (gefiltert auf Rufzeichenliste)' : '');
     resultsPanel.style.display = 'block';
-    setProgress(100, `Fertig – ${activated.length} Parks ausgewertet, ${rows.length} Rufzeichen gefunden.`);
+    setProgress(100, `Fertig – ${rows.length} Rufzeichen gefunden. ${statusExtra}`);
     (function(){
       const n = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).length;
       document.getElementById('cacheStatus').textContent = n > 0 ? `${n} Einträge im Cache.` : '';

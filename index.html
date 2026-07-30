@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>POTA Highscore</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <style>
   :root{
     --pota-green:#1f6f43;
@@ -125,6 +126,21 @@
   .status.error{color:#b3261e;}
 
   /* --- Ergebnis --- */
+  /* --- Tabs (Highscore / Statistiken) --- */
+  .tabs{display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:20px;}
+  .tab-btn{
+    background:transparent; color:var(--muted); border:none; border-bottom:2px solid transparent;
+    padding:8px 4px; margin-right:18px; font-size:14px; font-weight:600; border-radius:0;
+    cursor:pointer;
+  }
+  .tab-btn:hover{background:transparent; color:var(--pota-green-dark);}
+  .tab-btn.active{color:var(--pota-green-dark); border-bottom-color:var(--pota-green);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+
+  .stats-controls{display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin-bottom:18px;}
+  .chart-wrap{position:relative; height:380px; margin-top:10px;}
+
   .results-header{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
   .results-header h2{margin:0; font-size:17px; font-weight:700; color:var(--text);}
 
@@ -334,6 +350,12 @@
   </div>
 
   <div class="card" id="resultsPanel" style="display:none;">
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-tab="highscore" data-i18n-de="Highscore" data-i18n-en="Highscore">Highscore</button>
+      <button type="button" class="tab-btn" data-tab="stats" data-i18n-de="Statistiken" data-i18n-en="Statistics">Statistiken</button>
+    </div>
+
+    <div class="tab-pane active" id="tabHighscore">
     <div class="results-header">
       <h2 id="resultsTitle">Highscore</h2>
     </div>
@@ -377,6 +399,23 @@
       <summary data-i18n-de="Debug / Rohdaten (erstes Park-Aktivierungsobjekt)" data-i18n-en="Debug / raw data (first park activation object)">Debug / Rohdaten (erstes Park-Aktivierungsobjekt)</summary>
       <pre id="debugOut">–</pre>
     </details>
+    </div>
+
+    <div class="tab-pane" id="tabStats" style="display:none;">
+      <div class="stats-controls">
+        <div class="field" style="flex:1; min-width:200px;">
+          <label for="statsCallInput" data-i18n-de="Einzelnes Rufzeichen anzeigen (optional)" data-i18n-en="Show a single callsign (optional)">Einzelnes Rufzeichen anzeigen (optional)</label>
+          <input type="text" id="statsCallInput" data-i18n-de-ph="z.B. DL1ABC – leer lassen für Gesamt" data-i18n-en-ph="e.g. DL1ABC – leave empty for total" placeholder="z.B. DL1ABC – leer lassen für Gesamt" style="text-transform:uppercase;">
+        </div>
+        <button id="statsShowBtn" type="button" data-i18n-de="Anzeigen" data-i18n-en="Show">Anzeigen</button>
+        <button id="statsResetBtn" type="button" class="secondary" data-i18n-de="Gesamt-Statistik" data-i18n-en="Overall statistics">Gesamt-Statistik</button>
+      </div>
+      <h3 id="statsChartTitle" data-i18n-de="QSOs pro Jahr (gesamt, gefiltert)" data-i18n-en="QSOs per year (total, filtered)">QSOs pro Jahr (gesamt, gefiltert)</h3>
+      <div class="chart-wrap">
+        <canvas id="statsChart"></canvas>
+      </div>
+      <span id="statsStatus" class="hint"></span>
+    </div>
   </div>
 
 </div>
@@ -492,6 +531,21 @@ const statusLine = document.getElementById('statusLine');
 const resultsPanel = document.getElementById('resultsPanel');
 const resultsTitle = document.getElementById('resultsTitle');
 const debugOut = document.getElementById('debugOut');
+
+// --- Tabs (Highscore / Statistiken) ---
+let STATS_DATA = null; // {yearlyTotals, yearlyByCall} - befüllt nach jedem "Highscore laden"
+let statsChartInstance = null;
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+    btn.classList.add('active');
+    const pane = document.getElementById(btn.dataset.tab === 'stats' ? 'tabStats' : 'tabHighscore');
+    pane.classList.add('active');
+    pane.style.display = 'block';
+  });
+});
 
 function setProgress(pct, label){
   progressWrap.style.display = 'block';
@@ -631,6 +685,17 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
     return agg[call];
   }
 
+  // Jahres-Statistik (für den "Statistiken"-Tab): läuft IMMER über die komplette
+  // Historie, unabhängig vom gewählten "Zeitraum"-Filter oben, da der Sinn
+  // des Charts ja gerade der Verlauf über mehrere Jahre ist.
+  const yearlyTotals = {}; // year -> {all,cw,ssb,digi}
+  const yearlyByCall = {}; // call -> {year -> {all,cw,ssb,digi}}
+  const allTimeSeen = new Set(); // eigene Dedup-Menge, unabhängig vom Zeitraum-Filter
+  function ensureYear(bucket, year){
+    if(!bucket[year]) bucket[year] = {all:0, cw:0, ssb:0, digi:0};
+    return bucket[year];
+  }
+
   let firstSample = null;
 
   for(const act of activations){
@@ -645,7 +710,6 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
         d = new Date(dateStr);
       }
     }
-    if(dateFilter && d && !isNaN(d) && !dateFilter(d)) continue;
 
     const callRaw = pick(act, ['activeCallsign','activator','callsign','call'], null);
     if(!callRaw) continue;
@@ -666,6 +730,23 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
     const digiCount = Number(pick(act, ['qsosDATA','qsosDIGI'], 0)) || 0;
     const ref = act._parkRef || pick(act, ['reference','park','parkRef'], '');
     const actKey = ref + '|' + (dateStr || '') + '|' + call;
+
+    // --- Jahres-Statistik befüllen (immer, unabhängig vom Zeitraum-Filter) ---
+    if(d && !isNaN(d) && !allTimeSeen.has(actKey)){
+      allTimeSeen.add(actKey);
+      const year = d.getFullYear();
+      const totalBucket = ensureYear(yearlyTotals, year);
+      totalBucket.all += qsoCount; totalBucket.cw += cwCount;
+      totalBucket.ssb += ssbCount; totalBucket.digi += digiCount;
+
+      if(!yearlyByCall[call]) yearlyByCall[call] = {};
+      const callBucket = ensureYear(yearlyByCall[call], year);
+      callBucket.all += qsoCount; callBucket.cw += cwCount;
+      callBucket.ssb += ssbCount; callBucket.digi += digiCount;
+    }
+
+    // --- Ab hier: normale Highscore-Aggregation, respektiert den Zeitraum-Filter ---
+    if(dateFilter && d && !isNaN(d) && !dateFilter(d)) continue;
 
     const entry = ensure(call);
     const isDuplicate = entry.activations.has(actKey);
@@ -701,7 +782,7 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
     };
   });
 
-  return {rows, firstSample};
+  return {rows, firstSample, yearlyTotals, yearlyByCall};
 }
 
 async function run(){
@@ -746,7 +827,7 @@ async function run(){
       ));
     }
 
-    let rows, firstSample, statusExtra = '';
+    let rows, firstSample, yearlyTotals, yearlyByCall, statusExtra = '';
 
     if(dataSource === 'snapshot'){
       // --- Statischer Tages-Snapshot aus data/pota-snapshot.json (liegt im selben Repo) ---
@@ -776,7 +857,7 @@ async function run(){
         : snap.activations.filter(a => countryList.includes(a._country));
 
       setProgress(70, L('Werte Snapshot aus …', 'Evaluating snapshot …'));
-      ({rows, firstSample} = aggregateActivations(relevant, {dateFilter, filterSet}));
+      ({rows, firstSample, yearlyTotals, yearlyByCall} = aggregateActivations(relevant, {dateFilter, filterSet}));
 
       const genDate = new Date(snap.generated_at);
       let parksPerCountryNote = '';
@@ -869,7 +950,7 @@ async function run(){
         Array.from({length: Math.min(LIVE_CONCURRENCY, activated.length)}, worker)
       );
 
-      ({rows, firstSample} = aggregateActivations(allActs, {dateFilter, filterSet}));
+      ({rows, firstSample, yearlyTotals, yearlyByCall} = aggregateActivations(allActs, {dateFilter, filterSet}));
       statusExtra = L(`${activated.length} Parks live abgefragt.`, `${activated.length} parks queried live.`)
         + (fetchErrors > 0 ? L(` (${fetchErrors} Fehler)`, ` (${fetchErrors} errors)`) : '');
     }
@@ -922,6 +1003,12 @@ async function run(){
     resultsTitle.textContent = `Highscore – ${countryLabel}` + (filterSet ? L(' (gefiltert auf Rufzeichenliste)', ' (filtered to callsign list)') : '');
     resultsPanel.style.display = 'block';
     setProgress(100, L(`Fertig – ${rows.length} Rufzeichen gefunden. `, `Done – ${rows.length} callsigns found. `) + statusExtra);
+
+    // Statistik-Tab mit den gerade geladenen Daten befüllen (immer Gesamt-Ansicht
+    // beim Neuladen, ein evtl. vorher eingegebenes Einzel-Rufzeichen wird zurückgesetzt)
+    STATS_DATA = {yearlyTotals, yearlyByCall};
+    document.getElementById('statsCallInput').value = '';
+    renderStatsChart(null);
   }catch(err){
     console.error(err);
     setStatus(err.message || String(err), true);
@@ -1077,6 +1164,81 @@ function searchCallsign(){
     statusEl.style.color = 'var(--muted)';
   }
 }
+
+// --- Statistik-Tab: Chart.js Liniendiagramm QSOs pro Jahr ---
+function renderStatsChart(callsign){
+  const statusEl = document.getElementById('statsStatus');
+  const titleEl = document.getElementById('statsChartTitle');
+  statusEl.textContent = '';
+
+  if(!STATS_DATA){
+    statusEl.textContent = L('Bitte zuerst oben „Highscore laden" klicken.', 'Please click "Load highscore" above first.');
+    return;
+  }
+
+  let bucket;
+  if(callsign){
+    bucket = STATS_DATA.yearlyByCall[callsign];
+    if(!bucket){
+      statusEl.textContent = L(`„${callsign}" wurde in den aktuell geladenen Daten nicht gefunden.`, `"${callsign}" was not found in the currently loaded data.`);
+      titleEl.textContent = L('QSOs pro Jahr (gesamt, gefiltert)', 'QSOs per year (total, filtered)');
+      bucket = STATS_DATA.yearlyTotals; // Fallback: Gesamt weiter anzeigen
+      callsign = null;
+    } else {
+      titleEl.textContent = L(`QSOs pro Jahr – ${callsign}`, `QSOs per year – ${callsign}`);
+    }
+  } else {
+    bucket = STATS_DATA.yearlyTotals;
+    titleEl.textContent = L('QSOs pro Jahr (gesamt, gefiltert)', 'QSOs per year (total, filtered)');
+  }
+
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for(let y = 2018; y <= currentYear; y++) years.push(y);
+
+  const dataAll  = years.map(y => (bucket[y] ? bucket[y].all  : 0));
+  const dataCw   = years.map(y => (bucket[y] ? bucket[y].cw   : 0));
+  const dataSsb  = years.map(y => (bucket[y] ? bucket[y].ssb  : 0));
+  const dataDigi = years.map(y => (bucket[y] ? bucket[y].digi : 0));
+
+  const ctx = document.getElementById('statsChart').getContext('2d');
+  if(statsChartInstance) statsChartInstance.destroy();
+
+  statsChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        { label: L('Gesamt', 'Total'),   data: dataAll,  borderColor: '#164f30', backgroundColor: '#164f30', tension: .25 },
+        { label: 'CW',                    data: dataCw,   borderColor: '#1f6f43', backgroundColor: '#1f6f43', tension: .25 },
+        { label: L('SSB/Phone','SSB/Phone'), data: dataSsb, borderColor: '#d98c1f', backgroundColor: '#d98c1f', tension: .25 },
+        { label: L('Digital','Digital'),  data: dataDigi, borderColor: '#2563a8', backgroundColor: '#2563a8', tension: .25 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: 'QSOs' } },
+        x: { title: { display: true, text: L('Jahr', 'Year') } }
+      }
+    }
+  });
+}
+
+document.getElementById('statsShowBtn').addEventListener('click', () => {
+  const call = document.getElementById('statsCallInput').value.trim().toUpperCase();
+  renderStatsChart(call || null);
+});
+document.getElementById('statsCallInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter') document.getElementById('statsShowBtn').click();
+});
+document.getElementById('statsResetBtn').addEventListener('click', () => {
+  document.getElementById('statsCallInput').value = '';
+  renderStatsChart(null);
+});
 
 document.getElementById('searchBtn').addEventListener('click', searchCallsign);
 document.getElementById('callSearch').addEventListener('keydown', e => {

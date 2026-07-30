@@ -175,7 +175,7 @@
         </select>
       </div>
       <div class="field">
-        <label for="limit">Max. Parks pro Land (Performance)</label>
+        <label for="limit">Max. Parks pro Land (im Snapshot-Modus nur nach unten wirksam)</label>
         <select id="limit">
           <option value="40">40 aktivste Parks/Land</option>
           <option value="80" selected>80 aktivste Parks/Land</option>
@@ -193,15 +193,6 @@
       <div class="field">
         <button id="loadBtn">Highscore laden</button>
       </div>
-    </div>
-
-    <div class="controls" style="margin-top:14px;">
-      <div class="checkline">
-        <input type="checkbox" id="useCache" checked>
-        <label for="useCache">API-Antworten lokal zwischenspeichern (schnelleres erneutes Laden, gültig 6 Std.)</label>
-      </div>
-      <button type="button" id="clearCacheBtn" class="secondary">Cache leeren</button>
-      <span id="cacheStatus" style="font-size:12px; color:var(--muted);"></span>
     </div>
 
     <div class="controls" style="margin-top:14px;">
@@ -339,48 +330,10 @@ function pick(obj, names, def){
   return def;
 }
 
-// --- Einfacher localStorage-Cache für API-Antworten ---
-const CACHE_PREFIX = 'potaCache:';
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 Stunden
-
-function cacheGet(key){
-  if(!document.getElementById('useCache').checked) return null;
-  try{
-    const raw = localStorage.getItem(CACHE_PREFIX + key);
-    if(!raw) return null;
-    const {ts, data} = JSON.parse(raw);
-    if(Date.now() - ts > CACHE_TTL_MS) return null;
-    return data;
-  }catch(e){ return null; }
-}
-function cacheSet(key, data){
-  if(!document.getElementById('useCache').checked) return;
-  try{
-    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ts: Date.now(), data}));
-  }catch(e){
-    // z.B. Speicher voll (QuotaExceededError) -> einfach ignorieren, Cache ist nur ein Bonus
-  }
-}
-function clearCache(){
-  Object.keys(localStorage)
-    .filter(k => k.startsWith(CACHE_PREFIX))
-    .forEach(k => localStorage.removeItem(k));
-  document.getElementById('cacheStatus').textContent = 'Cache geleert.';
-}
-document.getElementById('clearCacheBtn').addEventListener('click', clearCache);
-(function showCacheInfo(){
-  const n = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).length;
-  if(n > 0) document.getElementById('cacheStatus').textContent = `${n} Einträge im Cache.`;
-})();
-
 async function fetchJson(url){
-  const cached = cacheGet(url);
-  if(cached !== null) return cached;
   const res = await fetch(url, {headers:{'Accept':'application/json'}});
   if(!res.ok) throw new Error('HTTP ' + res.status + ' bei ' + url);
-  const data = await res.json();
-  cacheSet(url, data);
-  return data;
+  return res.json();
 }
 
 // Snapshot der Draussenfunker-Rufzeichenliste (per curl geladen, Stand siehe unten).
@@ -458,6 +411,33 @@ function makeDateFilter(tf){
 function baseCallsign(call){
   // strip /P, /QRP, /M etc. für saubereres Zusammenzählen
   return (call || '').toUpperCase().split('/')[0];
+}
+
+function limitParksPerCountryInSnapshot(activations, n){
+  if(!n || n >= 99999) return activations; // "Alle" gewählt -> nichts zu tun
+
+  // Anzahl Aktivierungs-Einträge pro (Land, Park) als Näherung für "aktivster Park"
+  const counts = {}; // "country|ref" -> count
+  activations.forEach(a => {
+    const key = (a._country || '') + '|' + (a._parkRef || '');
+    counts[key] = (counts[key] || 0) + 1;
+  });
+
+  // Pro Land die Top-N Parks ermitteln
+  const byCountry = {}; // country -> [[ref, count], ...]
+  Object.entries(counts).forEach(([key, cnt]) => {
+    const [cc, ref] = key.split('|');
+    if(!byCountry[cc]) byCountry[cc] = [];
+    byCountry[cc].push([ref, cnt]);
+  });
+
+  const allowed = new Set(); // "country|ref"
+  Object.entries(byCountry).forEach(([cc, list]) => {
+    list.sort((a,b) => b[1] - a[1]);
+    list.slice(0, n).forEach(([ref]) => allowed.add(cc + '|' + ref));
+  });
+
+  return activations.filter(a => allowed.has((a._country || '') + '|' + (a._parkRef || '')));
 }
 
 function aggregateActivations(activations, {dateFilter, filterSet}){
@@ -570,15 +550,27 @@ async function run(){
         setStatus(`Hinweis: Diese Länder sind nicht im Snapshot enthalten und werden ignoriert: ${missing.join(', ')}. Für diese Länder bitte "Live von der POTA-API" nutzen.`);
       }
 
-      const relevant = isWorld
+      let relevant = isWorld
         ? snap.activations
         : snap.activations.filter(a => countryList.includes(a._country));
+
+      // Der "Max. Parks pro Land"-Filter kann den Snapshot nur nach UNTEN
+      // einschränken, nicht darüber hinaus erweitern (der Snapshot wurde ja
+      // bereits mit einer festen Obergrenze pro Land erzeugt).
+      const bakedLimit = snap.parks_per_country || 0;
+      relevant = limitParksPerCountryInSnapshot(relevant, limit);
 
       setProgress(70, 'Werte Snapshot aus …');
       ({rows, firstSample} = aggregateActivations(relevant, {dateFilter, filterSet}));
 
       const genDate = new Date(snap.generated_at);
-      statusExtra = `Snapshot-Stand: ${isNaN(genDate) ? snap.generated_at : genDate.toLocaleString('de-DE')} · ${snap.parks_per_country} Parks/Land`;
+      const bakedIsUnlimited = bakedLimit >= 99999;
+      const limitNote = bakedIsUnlimited
+        ? (limit >= 99999 ? 'Snapshot enthält alle Parks (kein Limit)' : `dein Limit ${limit} Parks/Land angewendet (Snapshot selbst enthält alle Parks)`)
+        : (limit < bakedLimit
+            ? `dein Limit ${limit} Parks/Land angewendet`
+            : `Snapshot enthält max. ${bakedLimit} Parks/Land (dein eingestelltes Limit ${limit} hat hier keine weitere Wirkung)`);
+      statusExtra = `Snapshot-Stand: ${isNaN(genDate) ? snap.generated_at : genDate.toLocaleString('de-DE')} · ${limitNote}`;
 
     } else {
       // --- Live-Abfrage direkt bei api.pota.app ---
@@ -657,10 +649,6 @@ async function run(){
     resultsTitle.textContent = `Highscore – ${countryLabel}` + (filterSet ? ' (gefiltert auf Rufzeichenliste)' : '');
     resultsPanel.style.display = 'block';
     setProgress(100, `Fertig – ${rows.length} Rufzeichen gefunden. ${statusExtra}`);
-    (function(){
-      const n = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).length;
-      document.getElementById('cacheStatus').textContent = n > 0 ? `${n} Einträge im Cache.` : '';
-    })();
   }catch(err){
     console.error(err);
     setStatus(err.message || String(err), true);

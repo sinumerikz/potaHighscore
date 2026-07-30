@@ -390,7 +390,12 @@
 const API = "https://api.pota.app";
 
 // --- Sprache (still im Hintergrund gemerkt, wie der API-Cache) ---
-let LANG = localStorage.getItem('potaLang') === 'en' ? 'en' : 'de';
+let LANG = 'de';
+try{
+  LANG = localStorage.getItem('potaLang') === 'en' ? 'en' : 'de';
+}catch(e){
+  // localStorage nicht verfügbar (z.B. file://, gesperrter Kontext) -> einfach bei 'de' bleiben
+}
 function L(de, en){ return LANG === 'de' ? de : en; }
 function fmtNum(n){ return n.toLocaleString(LANG === 'de' ? 'de-DE' : 'en-US'); }
 function fmtDate(d){ return d.toLocaleString(LANG === 'de' ? 'de-DE' : 'en-US'); }
@@ -406,7 +411,7 @@ const FOOTER_HTML = {
 
 function applyLanguage(lang){
   LANG = lang;
-  localStorage.setItem('potaLang', lang);
+  try{ localStorage.setItem('potaLang', lang); }catch(e){ /* localStorage nicht verfügbar -> ignorieren */ }
   document.documentElement.lang = lang;
 
   document.querySelectorAll('[data-i18n-de]').forEach(el => {

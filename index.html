@@ -919,6 +919,15 @@ async function run(){
       let done = 0;
       let fetchErrors = 0;
       const LIVE_CONCURRENCY = 8; // gleichzeitige Requests im Live-Modus
+      const fetchStartTime = Date.now();
+
+      function formatDuration(ms){
+        const totalSec = Math.round(ms / 1000);
+        if(totalSec < 60) return L(`${totalSec} Sek.`, `${totalSec} sec`);
+        const min = Math.floor(totalSec / 60);
+        const sec = totalSec % 60;
+        return L(`${min} Min. ${sec} Sek.`, `${min} min ${sec} sec`);
+      }
 
       async function fetchOnePark(park){
         const ref = pick(park, ['reference','ref'], null);
@@ -933,8 +942,19 @@ async function run(){
           fetchErrors++; // einzelnen Park überspringen, wenn die Abfrage fehlschlägt
         }
         done++;
+
+        // Restzeit grob schätzen: (bisher verstrichene Zeit / bisher erledigte
+        // Parks) * verbleibende Parks. Erst ab ein paar erledigten Parks
+        // sinnvoll, sonst schwankt die Schätzung am Anfang zu stark.
+        let etaText = '';
+        if(done >= 5 && done < activated.length){
+          const elapsed = Date.now() - fetchStartTime;
+          const remaining = Math.round((elapsed / done) * (activated.length - done));
+          etaText = L(` · ca. noch ${formatDuration(remaining)}`, ` · ~${formatDuration(remaining)} remaining`);
+        }
+
         setProgress(15 + Math.round((done/activated.length)*80),
-          L(`Lade Aktivierungen … (${done}/${activated.length})`, `Loading activations … (${done}/${activated.length})`));
+          L(`Lade Aktivierungen … (${done}/${activated.length})${etaText}`, `Loading activations … (${done}/${activated.length})${etaText}`));
       }
 
       // Einfacher Concurrency-Pool: LIVE_CONCURRENCY parallele "Worker",

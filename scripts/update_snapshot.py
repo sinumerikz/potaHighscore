@@ -3,6 +3,10 @@
 Erzeugt einen statischen JSON-Snapshot der POTA-Aktivierungsdaten
 für die konfigurierten Länder und speichert ihn unter data/pota-snapshot.json.
 
+Fragt die Park-Aktivierungen PARALLEL ab (statt nacheinander), damit auch
+mehrere hundert Parks pro Land in vertretbarer Zeit (innerhalb des
+6-Stunden-Limits von GitHub Actions) durchlaufen werden können.
+
 Wird von .github/workflows/update-snapshot.yml täglich automatisch ausgeführt
 (läuft auf den GitHub-Actions-Runnern, die eigenen Internetzugang haben).
 
@@ -14,7 +18,9 @@ Lokal manuell ausführen:
 import json
 import os
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 import requests
@@ -27,27 +33,38 @@ COUNTRIES = ["DE", "AT", "CH", "HR", "GB", "FR", "ES", "IT", "NL", "BE",
              "PL", "DK", "SE", "NO", "FI", "US", "CA", "AU", "JP"]
 
 # Wie viele der aktivsten Parks pro Land berücksichtigt werden.
-# Standard: kein Limit (alle jemals aktivierten Parks werden geladen).
-# Zum Testen/Beschleunigen kann man das per Umgebungsvariable begrenzen,
-# z.B. PARKS_PER_COUNTRY=60 als Repo-/Workflow-Variable setzen.
-PARKS_PER_COUNTRY = int(os.environ.get("PARKS_PER_COUNTRY", "999999"))
+PARKS_PER_COUNTRY = int(os.environ.get("PARKS_PER_COUNTRY", "150"))
 
-# Kleine Pause zwischen Requests, um die POTA-Server nicht zu stark zu belasten.
-REQUEST_DELAY_SEC = float(os.environ.get("REQUEST_DELAY_SEC", "0.2"))
+# Wie viele Park-Aktivierungs-Abfragen gleichzeitig laufen.
+# Höher = schneller, aber mehr Last auf den (inoffiziellen!) POTA-Servern
+# und höheres Risiko von Rate-Limiting/Fehlern. 10-15 ist ein vernünftiger
+# Mittelweg.
+MAX_WORKERS = int(os.environ.get("MAX_WORKERS", "12"))
 
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "pota-snapshot.json")
+
+# Eine gemeinsame Session pro Thread (Connection-Pooling), statt für jeden
+# Request eine neue Verbindung aufzubauen.
+_thread_local = threading.local()
+
+
+def get_session():
+    if not hasattr(_thread_local, "session"):
+        _thread_local.session = requests.Session()
+    return _thread_local.session
 
 
 def fetch_json(url, retries=3):
     last_err = None
+    session = get_session()
     for attempt in range(retries):
         try:
-            resp = requests.get(url, headers={"Accept": "application/json"}, timeout=20)
+            resp = session.get(url, headers={"Accept": "application/json"}, timeout=20)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:  # noqa: BLE001
             last_err = e
-            time.sleep(1.5 * (attempt + 1))
+            time.sleep(1.0 * (attempt + 1))
     print(f"  WARNUNG: {url} fehlgeschlagen nach {retries} Versuchen: {last_err}", file=sys.stderr)
     return None
 
@@ -58,10 +75,24 @@ def top_activated_parks(parks, n):
     return activated[:n]
 
 
+def fetch_park_activations(cc, ref):
+    """Wird parallel für jeden Park aufgerufen. Gibt (cc, ref, activations|None) zurück."""
+    acts = fetch_json(f"{API}/park/activations/{ref}?count=all")
+    if not isinstance(acts, list):
+        return cc, ref, None
+    for act in acts:
+        act["_country"] = cc
+        act["_parkRef"] = ref
+    return cc, ref, acts
+
+
 def main():
-    all_activations = []
+    start_time = time.time()
+
+    # 1) Parklisten pro Land laden (sequenziell, nur 19 schnelle Requests)
     countries_ok = []
     countries_failed = []
+    park_jobs = []  # Liste von (country, ref)
 
     for i, cc in enumerate(COUNTRIES, start=1):
         print(f"[{i}/{len(COUNTRIES)}] Lade Parkliste für {cc} ...")
@@ -72,20 +103,38 @@ def main():
         countries_ok.append(cc)
 
         top_parks = top_activated_parks(parks, PARKS_PER_COUNTRY)
-        print(f"    {len(top_parks)} aktivste Parks werden abgefragt ...")
+        print(f"    {len(top_parks)} aktivste Parks werden zur Abfrage vorgemerkt ...")
 
-        for j, park in enumerate(top_parks, start=1):
+        for park in top_parks:
             ref = park.get("reference") or park.get("ref")
-            if not ref:
-                continue
-            acts = fetch_json(f"{API}/park/activations/{ref}?count=all")
-            time.sleep(REQUEST_DELAY_SEC)
-            if not isinstance(acts, list):
-                continue
-            for act in acts:
-                act["_country"] = cc
-                act["_parkRef"] = ref
-                all_activations.append(act)
+            if ref:
+                park_jobs.append((cc, ref))
+
+    # 2) Alle Park-Aktivierungen PARALLEL abfragen
+    total = len(park_jobs)
+    print(f"\nStarte parallele Abfrage von {total} Parks mit {MAX_WORKERS} gleichzeitigen Requests ...")
+
+    all_activations = []
+    done = 0
+    failed_parks = 0
+    progress_lock = threading.Lock()
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(fetch_park_activations, cc, ref) for cc, ref in park_jobs]
+
+        for future in as_completed(futures):
+            cc, ref, acts = future.result()
+            with progress_lock:
+                done += 1
+                if acts is None:
+                    failed_parks += 1
+                else:
+                    all_activations.extend(acts)
+                if done % 50 == 0 or done == total:
+                    elapsed = time.time() - start_time
+                    print(f"  {done}/{total} Parks abgefragt "
+                          f"({len(all_activations)} Aktivierungen bisher, "
+                          f"{elapsed:.0f}s vergangen) ...")
 
     snapshot = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -101,10 +150,13 @@ def main():
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(snapshot, f, ensure_ascii=False, separators=(",", ":"))
 
-    print(f"\nFertig: {len(all_activations)} Aktivierungen aus {len(countries_ok)} Ländern "
-          f"gespeichert in {OUTPUT_PATH}")
+    elapsed_total = time.time() - start_time
+    print(f"\nFertig in {elapsed_total/60:.1f} Min.: {len(all_activations)} Aktivierungen aus "
+          f"{len(countries_ok)} Ländern gespeichert in {OUTPUT_PATH}")
+    if failed_parks:
+        print(f"Übersprungen (Park-Abfrage fehlgeschlagen): {failed_parks} von {total} Parks")
     if countries_failed:
-        print(f"Übersprungen (Fehler): {', '.join(countries_failed)}")
+        print(f"Übersprungen (Land komplett fehlgeschlagen): {', '.join(countries_failed)}")
 
 
 if __name__ == "__main__":

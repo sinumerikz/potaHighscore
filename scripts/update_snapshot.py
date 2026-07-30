@@ -27,8 +27,10 @@ COUNTRIES = ["DE", "AT", "CH", "HR", "GB", "FR", "ES", "IT", "NL", "BE",
              "PL", "DK", "SE", "NO", "FI", "US", "CA", "AU", "JP"]
 
 # Wie viele der aktivsten Parks pro Land berücksichtigt werden.
-# Höher = vollständiger, aber deutlich mehr API-Calls und längere Laufzeit.
-PARKS_PER_COUNTRY = int(os.environ.get("PARKS_PER_COUNTRY", "60"))
+# Standard: kein Limit (alle jemals aktivierten Parks werden geladen).
+# Zum Testen/Beschleunigen kann man das per Umgebungsvariable begrenzen,
+# z.B. PARKS_PER_COUNTRY=60 als Repo-/Workflow-Variable setzen.
+PARKS_PER_COUNTRY = int(os.environ.get("PARKS_PER_COUNTRY", "999999"))
 
 # Kleine Pause zwischen Requests, um die POTA-Server nicht zu stark zu belasten.
 REQUEST_DELAY_SEC = float(os.environ.get("REQUEST_DELAY_SEC", "0.2"))

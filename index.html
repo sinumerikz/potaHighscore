@@ -468,6 +468,13 @@ function applyLanguage(lang){
 
   repopulateYearOptions();
   if(typeof syncLimitAllOption === 'function') syncLimitAllOption();
+
+  // Chart neu rendern, falls schon Daten geladen sind, sonst blieben
+  // Legende/Achsen-Beschriftungen (Chart.js) in der alten Sprache stehen.
+  if(typeof STATS_DATA !== 'undefined' && STATS_DATA){
+    const currentCall = document.getElementById('statsCallInput').value.trim().toUpperCase();
+    renderStatsChart(currentCall || null);
+  }
 }
 
 document.querySelectorAll('.lang-switch button').forEach(btn => {

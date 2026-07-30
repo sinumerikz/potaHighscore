@@ -255,7 +255,7 @@
           <option value="40">40 aktivste Parks/Land</option>
           <option value="80" selected>80 aktivste Parks/Land</option>
           <option value="150">150 aktivste Parks/Land</option>
-          <option value="99999" id="limitAllOption">Alle aktivierten Parks/Land (langsam!)</option>
+          <option value="99999">Alle aktivierten Parks/Land (langsam!)</option>
         </select>
       </div>
     </div>
@@ -375,7 +375,6 @@ const WORLD_COUNTRIES = ['DE','AT','CH','HR','GB','FR','ES','IT','NL','BE','PL',
 
 countrySel.addEventListener('change', () => {
   customField.style.display = countrySel.value === '__custom' ? 'flex' : 'none';
-  syncLimitAllOption();
 });
 
 const dataSourceSel = document.getElementById('dataSource');
@@ -385,22 +384,6 @@ function syncLimitFieldVisibility(){
 }
 dataSourceSel.addEventListener('change', syncLimitFieldVisibility);
 syncLimitFieldVisibility();
-
-const limitSel = document.getElementById('limit');
-const limitAllOption = document.getElementById('limitAllOption');
-function syncLimitAllOption(){
-  const isWorldSelected = countrySel.value === '__world';
-  limitAllOption.disabled = isWorldSelected;
-  limitAllOption.textContent = isWorldSelected
-    ? 'Alle aktivierten Parks/Land (bei Weltweit nicht möglich)'
-    : 'Alle aktivierten Parks/Land (langsam!)';
-  // Falls "Alle" gerade ausgewählt war und man auf Weltweit wechselt:
-  // auf einen sinnvollen Wert zurückfallen, statt bei einer deaktivierten Option zu bleiben.
-  if(isWorldSelected && limitSel.value === '99999'){
-    limitSel.value = '150';
-  }
-}
-syncLimitAllOption();
 
 const loadBtn = document.getElementById('loadBtn');
 const progressWrap = document.getElementById('progressWrap');

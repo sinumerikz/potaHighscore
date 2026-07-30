@@ -239,7 +239,7 @@
         <span class="hint">Snapshot: Top 150 Parks/Land, DE alle Parks · bis 24 Std. alt</span>
       </div>
 
-      <div class="field">
+      <div class="field" id="limitField" style="display:none;">
         <label for="limit">Max. Parks pro Land</label>
         <select id="limit">
           <option value="40">40 aktivste Parks/Land</option>
@@ -247,7 +247,6 @@
           <option value="150">150 aktivste Parks/Land</option>
           <option value="99999">Alle aktivierten Parks/Land (langsam!)</option>
         </select>
-        <span class="hint">Nur im Live-Modus wirksam</span>
       </div>
     </div>
 
@@ -367,6 +366,14 @@ const WORLD_COUNTRIES = ['DE','AT','CH','HR','GB','FR','ES','IT','NL','BE','PL',
 countrySel.addEventListener('change', () => {
   customField.style.display = countrySel.value === '__custom' ? 'flex' : 'none';
 });
+
+const dataSourceSel = document.getElementById('dataSource');
+const limitField = document.getElementById('limitField');
+function syncLimitFieldVisibility(){
+  limitField.style.display = dataSourceSel.value === 'live' ? 'flex' : 'none';
+}
+dataSourceSel.addEventListener('change', syncLimitFieldVisibility);
+syncLimitFieldVisibility();
 
 const loadBtn = document.getElementById('loadBtn');
 const progressWrap = document.getElementById('progressWrap');

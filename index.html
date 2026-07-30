@@ -190,6 +190,15 @@
 
     <div class="controls" style="margin-top:14px;">
       <div class="checkline">
+        <input type="checkbox" id="useCache" checked>
+        <label for="useCache">API-Antworten lokal zwischenspeichern (schnelleres erneutes Laden, gültig 6 Std.)</label>
+      </div>
+      <button type="button" id="clearCacheBtn" class="secondary">Cache leeren</button>
+      <span id="cacheStatus" style="font-size:12px; color:var(--muted);"></span>
+    </div>
+
+    <div class="controls" style="margin-top:14px;">
+      <div class="checkline">
         <input type="checkbox" id="useCallFilter">
         <label for="useCallFilter">Nur Rufzeichen aus Liste berücksichtigen</label>
       </div>
@@ -323,10 +332,48 @@ function pick(obj, names, def){
   return def;
 }
 
+// --- Einfacher localStorage-Cache für API-Antworten ---
+const CACHE_PREFIX = 'potaCache:';
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 Stunden
+
+function cacheGet(key){
+  if(!document.getElementById('useCache').checked) return null;
+  try{
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if(!raw) return null;
+    const {ts, data} = JSON.parse(raw);
+    if(Date.now() - ts > CACHE_TTL_MS) return null;
+    return data;
+  }catch(e){ return null; }
+}
+function cacheSet(key, data){
+  if(!document.getElementById('useCache').checked) return;
+  try{
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ts: Date.now(), data}));
+  }catch(e){
+    // z.B. Speicher voll (QuotaExceededError) -> einfach ignorieren, Cache ist nur ein Bonus
+  }
+}
+function clearCache(){
+  Object.keys(localStorage)
+    .filter(k => k.startsWith(CACHE_PREFIX))
+    .forEach(k => localStorage.removeItem(k));
+  document.getElementById('cacheStatus').textContent = 'Cache geleert.';
+}
+document.getElementById('clearCacheBtn').addEventListener('click', clearCache);
+(function showCacheInfo(){
+  const n = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).length;
+  if(n > 0) document.getElementById('cacheStatus').textContent = `${n} Einträge im Cache.`;
+})();
+
 async function fetchJson(url){
+  const cached = cacheGet(url);
+  if(cached !== null) return cached;
   const res = await fetch(url, {headers:{'Accept':'application/json'}});
   if(!res.ok) throw new Error('HTTP ' + res.status + ' bei ' + url);
-  return res.json();
+  const data = await res.json();
+  cacheSet(url, data);
+  return data;
 }
 
 // Snapshot der Draussenfunker-Rufzeichenliste (per curl geladen, Stand siehe unten).
@@ -565,6 +612,10 @@ async function run(){
     resultsTitle.textContent = `Highscore – ${countryLabel}` + (filterSet ? ' (gefiltert auf Rufzeichenliste)' : '');
     resultsPanel.style.display = 'block';
     setProgress(100, `Fertig – ${activated.length} Parks ausgewertet, ${rows.length} Rufzeichen gefunden.`);
+    (function(){
+      const n = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX)).length;
+      document.getElementById('cacheStatus').textContent = n > 0 ? `${n} Einträge im Cache.` : '';
+    })();
   }catch(err){
     console.error(err);
     setStatus(err.message || String(err), true);

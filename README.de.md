@@ -94,8 +94,6 @@ Snapshot-Modus direkt; der Live-Modus fragt stattdessen direkt `api.pota.app` ab
 - **Inoffizielle API**: `api.pota.app` ist nicht dokumentiert, Endpunkte und Feldnamen können
   sich jederzeit ändern. Bei Auffälligkeiten hilft der Bereich „Debug / Rohdaten" mit der
   rohen API-Antwort.
-- **Kein P2P (Park-to-Park)**: Der genutzte Endpunkt liefert diese Info nicht, daher zeigt das
-  Tool stattdessen eine CW/SSB/Digital-Aufschlüsselung.
 - **Mindest-QSO-Regel angewendet**: Aktivierungen mit weniger als 10 QSOs zählen laut POTA-Regeln
   offiziell nicht und werden überall konsequent ausgeschlossen, damit unsere Zahlen mit dem
   offiziellen Leaderboard übereinstimmen.

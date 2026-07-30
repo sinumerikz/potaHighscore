@@ -99,6 +99,22 @@
   .stat-card .label{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); font-weight:700;}
   .stat-card .value{font-size:22px; font-weight:800; color:var(--pota-green-dark); margin-top:2px;}
 
+  .pagination{display:flex; align-items:center; justify-content:center; gap:4px; margin-top:10px; flex-wrap:wrap;}
+  .pagination button{
+    background:#fff; color:var(--pota-green-dark); border:1px solid var(--border);
+    padding:5px 10px; font-size:12px; font-weight:600; border-radius:6px; min-width:30px;
+  }
+  .pagination button:hover:not(:disabled){background:var(--pota-green-light); border-color:var(--pota-green);}
+  .pagination button.active{background:var(--pota-green); color:#fff; border-color:var(--pota-green);}
+  .pagination button:disabled{opacity:.35; cursor:default;}
+  .pagination .pg-info{font-size:12px; color:var(--muted); margin:0 4px;}
+
+  @keyframes highlightRow{
+    0%{background:#ffe9b3;}
+    100%{background:transparent;}
+  }
+  tr.row-highlight{animation:highlightRow 2s ease-out;}
+
   footer{text-align:center; font-size:12px; color:var(--muted); padding:24px;}
   a{color:var(--pota-green-dark);}
 </style>
@@ -206,18 +222,33 @@
 
     <div id="summaryBox" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:18px;"></div>
 
+    <div class="controls" style="margin-bottom:14px;">
+      <div class="field" style="min-width:220px;">
+        <label for="callSearch">Rufzeichen suchen &amp; zur Position springen</label>
+        <input type="text" id="callSearch" placeholder="z.B. DL1ABC" style="text-transform:uppercase;">
+      </div>
+      <div class="field">
+        <button id="searchBtn" class="secondary" type="button">Springen</button>
+      </div>
+      <div class="field" style="justify-content:center;">
+        <span id="searchStatus" style="font-size:12px; color:var(--muted);"></span>
+      </div>
+    </div>
+
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(380px,1fr));">
       <div>
         <table>
           <thead><tr><th></th><th>Rufzeichen</th><th class="num">Aktivierungen</th></tr></thead>
           <tbody id="tblActivations"></tbody>
         </table>
+        <div class="pagination" id="pagActivations"></div>
       </div>
       <div>
         <table>
           <thead><tr><th></th><th>Rufzeichen</th><th class="num">QSOs</th></tr></thead>
           <tbody id="tblQsos"></tbody>
         </table>
+        <div class="pagination" id="pagQsos"></div>
       </div>
     </div>
     <p style="font-size:12px; color:var(--muted); margin-top:12px;">
@@ -547,20 +578,118 @@ function modeBadges(r){
     : '';
 }
 
+const PAGE_SIZE = 25;
+const tableState = {}; // tbodyId -> {rows, field, page}
+
 function renderTable(tbodyId, rows, field){
+  tableState[tbodyId] = {rows, field, page: 0};
+  renderPage(tbodyId);
+}
+
+function renderPage(tbodyId){
+  const state = tableState[tbodyId];
+  const {rows, field} = state;
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  state.page = Math.min(Math.max(0, state.page), totalPages - 1);
+
+  const start = state.page * PAGE_SIZE;
+  const pageRows = rows.slice(start, start + PAGE_SIZE);
+
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = '';
   const medals = ['🥇','🥈','🥉'];
-  rows.slice(0, 25).forEach((r, i) => {
+  pageRows.forEach((r, i) => {
+    const rank = start + i;
     const tr = document.createElement('tr');
+    tr.dataset.call = r.call;
     tr.innerHTML = `
-      <td class="rank">${medals[i] || (i+1)}</td>
+      <td class="rank">${medals[rank] || (rank+1)}</td>
       <td class="call"><a href="https://pota.app/#/profile/${encodeURIComponent(r.call)}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none; border-bottom:1px dashed var(--pota-green);">${r.call}</a>${modeBadges(r)}</td>
       <td class="num">${r[field].toLocaleString('de-DE')}</td>
     `;
     tbody.appendChild(tr);
   });
+
+  renderPaginationControls(tbodyId, totalPages);
 }
+
+function renderPaginationControls(tbodyId, totalPages){
+  const pagId = tbodyId === 'tblActivations' ? 'pagActivations' : 'pagQsos';
+  const pagEl = document.getElementById(pagId);
+  if(!pagEl) return;
+  const state = tableState[tbodyId];
+  const cur = state.page;
+
+  if(totalPages <= 1){ pagEl.innerHTML = ''; return; }
+
+  let html = '';
+  html += `<button data-goto="0" ${cur===0?'disabled':''} title="Erste Seite">⏮</button>`;
+  html += `<button data-goto="${cur-1}" ${cur===0?'disabled':''} title="Vorherige Seite">◀</button>`;
+
+  // Sichtbare Seitenzahlen um die aktuelle Seite herum
+  const windowSize = 2;
+  const from = Math.max(0, cur - windowSize);
+  const to = Math.min(totalPages - 1, cur + windowSize);
+  if(from > 0) html += `<span class="pg-info">…</span>`;
+  for(let p = from; p <= to; p++){
+    html += `<button data-goto="${p}" class="${p===cur?'active':''}">${p+1}</button>`;
+  }
+  if(to < totalPages - 1) html += `<span class="pg-info">…</span>`;
+
+  html += `<button data-goto="${cur+1}" ${cur===totalPages-1?'disabled':''} title="Nächste Seite">▶</button>`;
+  html += `<button data-goto="${totalPages-1}" ${cur===totalPages-1?'disabled':''} title="Letzte Seite">⏭</button>`;
+  html += `<span class="pg-info">Seite ${cur+1} / ${totalPages}</span>`;
+
+  pagEl.innerHTML = html;
+  pagEl.querySelectorAll('button[data-goto]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tableState[tbodyId].page = parseInt(btn.dataset.goto, 10);
+      renderPage(tbodyId);
+    });
+  });
+}
+
+function jumpToCallsign(tbodyId, query){
+  const state = tableState[tbodyId];
+  if(!state) return false;
+  const idxExact = state.rows.findIndex(r => r.call === query);
+  const idx = idxExact >= 0 ? idxExact : state.rows.findIndex(r => r.call.includes(query));
+  if(idx < 0) return false;
+
+  state.page = Math.floor(idx / PAGE_SIZE);
+  renderPage(tbodyId);
+
+  const row = document.querySelector(`#${tbodyId} tr[data-call="${state.rows[idx].call}"]`);
+  if(row){
+    row.scrollIntoView({behavior:'smooth', block:'center'});
+    row.classList.remove('row-highlight');
+    void row.offsetWidth; // reflow, damit die Animation neu startet
+    row.classList.add('row-highlight');
+  }
+  return true;
+}
+
+function searchCallsign(){
+  const query = document.getElementById('callSearch').value.trim().toUpperCase();
+  const statusEl = document.getElementById('searchStatus');
+  if(!query){ statusEl.textContent = ''; return; }
+
+  const foundAct = jumpToCallsign('tblActivations', query);
+  const foundQso = jumpToCallsign('tblQsos', query);
+
+  if(!foundAct && !foundQso){
+    statusEl.textContent = `„${query}" wurde in der aktuellen Auswertung nicht gefunden.`;
+    statusEl.style.color = '#b3261e';
+  } else {
+    statusEl.textContent = `„${query}" gefunden und markiert.`;
+    statusEl.style.color = 'var(--muted)';
+  }
+}
+
+document.getElementById('searchBtn').addEventListener('click', searchCallsign);
+document.getElementById('callSearch').addEventListener('keydown', e => {
+  if(e.key === 'Enter') searchCallsign();
+});
 
 loadBtn.addEventListener('click', run);
 </script>

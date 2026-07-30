@@ -171,6 +171,7 @@
           <option value="30">Letzte 30 Tage</option>
           <option value="year" selected>Aktuelles Jahr</option>
           <option value="all">Gesamter Verlauf</option>
+          <optgroup label="Bestimmtes Jahr" id="yearOptGroup"></optgroup>
         </select>
       </div>
       <div class="field">
@@ -278,6 +279,18 @@ const customField = document.getElementById('customField');
 const customInput = document.getElementById('customCountry');
 const WORLD_COUNTRIES = ['DE','AT','CH','HR','GB','FR','ES','IT','NL','BE','PL','DK','SE','NO','FI','US','CA','AU','JP'];
 
+// POTA startete 2018 -> Jahres-Auswahl im Zeitraum-Dropdown befüllen
+(function populateYearOptions(){
+  const grp = document.getElementById('yearOptGroup');
+  const currentYear = new Date().getFullYear();
+  for(let y = currentYear; y >= 2018; y--){
+    const opt = document.createElement('option');
+    opt.value = 'y' + y;
+    opt.textContent = 'Jahr ' + y;
+    grp.appendChild(opt);
+  }
+})();
+
 countrySel.addEventListener('change', () => {
   customField.style.display = countrySel.value === '__custom' ? 'flex' : 'none';
 });
@@ -371,15 +384,21 @@ async function loadCallFilter(url){
   }
 }
 
-function timeframeCutoff(tf){
+function makeDateFilter(tf){
   const now = new Date();
   if(tf === '30'){
-    const d = new Date(now); d.setDate(d.getDate() - 30); return d;
+    const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - 30);
+    return d => d >= cutoff;
   }
   if(tf === 'year'){
-    return new Date(now.getFullYear(), 0, 1);
+    const start = new Date(now.getFullYear(), 0, 1);
+    return d => d >= start;
   }
-  return null; // 'all'
+  if(tf.startsWith('y')){
+    const y = parseInt(tf.slice(1), 10);
+    return d => d.getFullYear() === y;
+  }
+  return null; // 'all' -> kein Filter
 }
 
 function baseCallsign(call){
@@ -413,7 +432,7 @@ async function run(){
 
     const limit = parseInt(document.getElementById('limit').value, 10);
     const tf = document.getElementById('timeframe').value;
-    const cutoff = timeframeCutoff(tf);
+    const dateFilter = makeDateFilter(tf);
 
     const useFilter = document.getElementById('useCallFilter').checked;
     let filterSet = null;
@@ -503,7 +522,7 @@ async function run(){
             d = new Date(dateStr);
           }
         }
-        if(cutoff && d && !isNaN(d) && d < cutoff) continue;
+        if(dateFilter && d && !isNaN(d) && !dateFilter(d)) continue;
 
         const callRaw = pick(act, ['activeCallsign','activator','callsign','call'], null);
         if(!callRaw) continue;

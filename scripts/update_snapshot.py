@@ -32,8 +32,21 @@ API = "https://api.pota.app"
 COUNTRIES = ["DE", "AT", "CH", "HR", "GB", "FR", "ES", "IT", "NL", "BE",
              "PL", "DK", "SE", "NO", "FI", "US", "CA", "AU", "JP"]
 
-# Wie viele der aktivsten Parks pro Land berücksichtigt werden.
+# Wie viele der aktivsten Parks pro Land berücksichtigt werden (Standard für
+# alle Länder ohne eigene Ausnahme in COUNTRY_PARK_LIMITS unten).
 PARKS_PER_COUNTRY = int(os.environ.get("PARKS_PER_COUNTRY", "150"))
+
+# Pro-Land-Ausnahmen: überschreiben PARKS_PER_COUNTRY für einzelne Länder.
+# Deutschland: alle jemals aktivierten Parks laden (kein Limit).
+# Weitere Ausnahmen einfach als zusätzliche Zeile ergänzen, z.B. "AT": 500.
+COUNTRY_PARK_LIMITS = {
+    "DE": int(os.environ.get("PARKS_PER_COUNTRY_DE", "999999")),
+}
+
+
+def limit_for_country(cc):
+    return COUNTRY_PARK_LIMITS.get(cc, PARKS_PER_COUNTRY)
+
 
 # Wie viele Park-Aktivierungs-Abfragen gleichzeitig laufen.
 # Höher = schneller, aber mehr Last auf den (inoffiziellen!) POTA-Servern
@@ -102,8 +115,10 @@ def main():
             continue
         countries_ok.append(cc)
 
-        top_parks = top_activated_parks(parks, PARKS_PER_COUNTRY)
-        print(f"    {len(top_parks)} aktivste Parks werden zur Abfrage vorgemerkt ...")
+        cc_limit = limit_for_country(cc)
+        top_parks = top_activated_parks(parks, cc_limit)
+        limit_label = "alle" if cc_limit >= 99999 else str(cc_limit)
+        print(f"    {len(top_parks)} Parks werden zur Abfrage vorgemerkt (Limit: {limit_label}) ...")
 
         for park in top_parks:
             ref = park.get("reference") or park.get("ref")
@@ -139,6 +154,7 @@ def main():
     snapshot = {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "parks_per_country": PARKS_PER_COUNTRY,
+        "parks_per_country_by_country": {cc: limit_for_country(cc) for cc in COUNTRIES},
         "countries_requested": COUNTRIES,
         "countries_ok": countries_ok,
         "countries_failed": countries_failed,

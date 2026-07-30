@@ -175,7 +175,7 @@
         </select>
       </div>
       <div class="field">
-        <label for="limit">Max. Parks pro Land (im Snapshot-Modus nur nach unten wirksam)</label>
+        <label for="limit">Max. Parks pro Land (nur im Live-Modus wirksam)</label>
         <select id="limit">
           <option value="40">40 aktivste Parks/Land</option>
           <option value="80" selected>80 aktivste Parks/Land</option>
@@ -413,32 +413,7 @@ function baseCallsign(call){
   return (call || '').toUpperCase().split('/')[0];
 }
 
-function limitParksPerCountryInSnapshot(activations, n){
-  if(!n || n >= 99999) return activations; // "Alle" gewählt -> nichts zu tun
 
-  // Anzahl Aktivierungs-Einträge pro (Land, Park) als Näherung für "aktivster Park"
-  const counts = {}; // "country|ref" -> count
-  activations.forEach(a => {
-    const key = (a._country || '') + '|' + (a._parkRef || '');
-    counts[key] = (counts[key] || 0) + 1;
-  });
-
-  // Pro Land die Top-N Parks ermitteln
-  const byCountry = {}; // country -> [[ref, count], ...]
-  Object.entries(counts).forEach(([key, cnt]) => {
-    const [cc, ref] = key.split('|');
-    if(!byCountry[cc]) byCountry[cc] = [];
-    byCountry[cc].push([ref, cnt]);
-  });
-
-  const allowed = new Set(); // "country|ref"
-  Object.entries(byCountry).forEach(([cc, list]) => {
-    list.sort((a,b) => b[1] - a[1]);
-    list.slice(0, n).forEach(([ref]) => allowed.add(cc + '|' + ref));
-  });
-
-  return activations.filter(a => allowed.has((a._country || '') + '|' + (a._parkRef || '')));
-}
 
 function aggregateActivations(activations, {dateFilter, filterSet}){
   const agg = {}; // call -> {activations:Set, qsos:0, cw:0, ssb:0, digi:0}
@@ -550,27 +525,15 @@ async function run(){
         setStatus(`Hinweis: Diese Länder sind nicht im Snapshot enthalten und werden ignoriert: ${missing.join(', ')}. Für diese Länder bitte "Live von der POTA-API" nutzen.`);
       }
 
-      let relevant = isWorld
+      const relevant = isWorld
         ? snap.activations
         : snap.activations.filter(a => countryList.includes(a._country));
-
-      // Der "Max. Parks pro Land"-Filter kann den Snapshot nur nach UNTEN
-      // einschränken, nicht darüber hinaus erweitern (der Snapshot wurde ja
-      // bereits mit einer festen Obergrenze pro Land erzeugt).
-      const bakedLimit = snap.parks_per_country || 0;
-      relevant = limitParksPerCountryInSnapshot(relevant, limit);
 
       setProgress(70, 'Werte Snapshot aus …');
       ({rows, firstSample} = aggregateActivations(relevant, {dateFilter, filterSet}));
 
       const genDate = new Date(snap.generated_at);
-      const bakedIsUnlimited = bakedLimit >= 99999;
-      const limitNote = bakedIsUnlimited
-        ? (limit >= 99999 ? 'Snapshot enthält alle Parks (kein Limit)' : `dein Limit ${limit} Parks/Land angewendet (Snapshot selbst enthält alle Parks)`)
-        : (limit < bakedLimit
-            ? `dein Limit ${limit} Parks/Land angewendet`
-            : `Snapshot enthält max. ${bakedLimit} Parks/Land (dein eingestelltes Limit ${limit} hat hier keine weitere Wirkung)`);
-      statusExtra = `Snapshot-Stand: ${isNaN(genDate) ? snap.generated_at : genDate.toLocaleString('de-DE')} · ${limitNote}`;
+      statusExtra = `Snapshot-Stand: ${isNaN(genDate) ? snap.generated_at : genDate.toLocaleString('de-DE')}`;
 
     } else {
       // --- Live-Abfrage direkt bei api.pota.app ---

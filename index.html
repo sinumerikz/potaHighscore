@@ -351,7 +351,7 @@
 
     <div class="table-grid">
       <div class="table-block">
-        <h3 data-i18n-de="Meiste Aktivierungen" data-i18n-en="Most activations">Meiste Aktivierungen</h3>
+        <h3 id="activationsTableTitle" data-i18n-de="Meiste Aktivierungen" data-i18n-en="Most activations">Meiste Aktivierungen</h3>
         <table>
           <thead><tr><th></th><th data-i18n-de="Rufzeichen" data-i18n-en="Callsign">Rufzeichen</th><th class="num" data-i18n-de="Aktivierungen" data-i18n-en="Activations">Aktivierungen</th></tr></thead>
           <tbody id="tblActivations"></tbody>
@@ -621,9 +621,12 @@ function baseCallsign(call){
 }
 
 function aggregateActivations(activations, {dateFilter, filterSet}){
-  const agg = {}; // call -> {activations:Set, qsos:0, cw:0, ssb:0, digi:0}
+  const agg = {}; // call -> {activations:Set, qsos:0, cw:0, ssb:0, digi:0, actCw:Set, actSsb:Set, actDigi:Set}
   function ensure(call){
-    if(!agg[call]) agg[call] = {activations:new Set(), qsos:0, cw:0, ssb:0, digi:0};
+    if(!agg[call]) agg[call] = {
+      activations:new Set(), qsos:0, cw:0, ssb:0, digi:0,
+      actCw:new Set(), actSsb:new Set(), actDigi:new Set()
+    };
     return agg[call];
   }
 
@@ -662,11 +665,17 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
     entry.cw += cwCount;
     entry.ssb += ssbCount;
     entry.digi += digiCount;
+    // Eine Aktivierung zählt für einen Mode, sobald mindestens 1 QSO in
+    // diesem Mode dabei war (eine Aktivierung kann mehrere Modes umfassen).
+    if(cwCount > 0)   entry.actCw.add(actKey);
+    if(ssbCount > 0)  entry.actSsb.add(actKey);
+    if(digiCount > 0) entry.actDigi.add(actKey);
   }
 
   const rows = Object.entries(agg).map(([call, v]) => ({
     call, activations: v.activations.size, qsos: v.qsos,
-    cw: v.cw, ssb: v.ssb, digi: v.digi
+    cw: v.cw, ssb: v.ssb, digi: v.digi,
+    actCw: v.actCw.size, actSsb: v.actSsb.size, actDigi: v.actDigi.size
   }));
 
   return {rows, firstSample};
@@ -837,8 +846,24 @@ async function run(){
       ));
     }
 
-    renderTable('tblActivations', [...rows].sort((a,b)=>b.activations-a.activations), 'activations');
     const modeFilter = document.getElementById('modeFilter').value; // all | cw | ssb | digi
+
+    // --- Aktivierungen-Tabelle (nach Betriebsart gefiltert, falls gewählt) ---
+    const actFieldMap = {all: 'activations', cw: 'actCw', ssb: 'actSsb', digi: 'actDigi'};
+    const actField = actFieldMap[modeFilter];
+    const modeActLabels = L(
+      {all: 'Aktivierungen', cw: 'CW-Aktivierungen', ssb: 'SSB/Phone-Aktivierungen', digi: 'Digital-Aktivierungen'},
+      {all: 'Activations', cw: 'CW Activations', ssb: 'SSB/Phone Activations', digi: 'Digital Activations'}
+    );
+    const activationsRows = modeFilter === 'all'
+      ? [...rows]
+      : rows.filter(r => r[actField] > 0);
+    activationsRows.sort((a,b) => b[actField] - a[actField]);
+
+    document.getElementById('activationsTableTitle').textContent = L('Meiste ', 'Most ') + modeActLabels[modeFilter];
+    renderTable('tblActivations', activationsRows, actField);
+
+    // --- QSO-Tabelle (nach Betriebsart gefiltert, falls gewählt) ---
     const modeLabels = L(
       {all: 'QSOs', cw: 'CW-QSOs', ssb: 'SSB/Phone-QSOs', digi: 'Digital-QSOs'},
       {all: 'QSOs', cw: 'CW QSOs', ssb: 'SSB/Phone QSOs', digi: 'Digital QSOs'}

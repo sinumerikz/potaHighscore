@@ -660,11 +660,18 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
     const actKey = ref + '|' + (dateStr || '') + '|' + call;
 
     const entry = ensure(call);
+    const isDuplicate = entry.activations.has(actKey);
     entry.activations.add(actKey);
-    entry.qsos += qsoCount;
-    entry.cw += cwCount;
-    entry.ssb += ssbCount;
-    entry.digi += digiCount;
+    // Nur bei neuen (nicht bereits gesehenen) Aktivierungen aufaddieren, sonst
+    // würden doppelt vorkommende Rohdaten (z.B. durch überlappende Park-
+    // Abfragen) die QSO-Summen künstlich aufblähen, obwohl die Aktivierungen-
+    // Zahl dank des Sets korrekt bliebe.
+    if(!isDuplicate){
+      entry.qsos += qsoCount;
+      entry.cw += cwCount;
+      entry.ssb += ssbCount;
+      entry.digi += digiCount;
+    }
     // Eine Aktivierung zählt für einen Mode, sobald mindestens 1 QSO in
     // diesem Mode dabei war (eine Aktivierung kann mehrere Modes umfassen).
     if(cwCount > 0)   entry.actCw.add(actKey);

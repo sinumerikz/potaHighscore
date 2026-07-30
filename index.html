@@ -654,6 +654,13 @@ function aggregateActivations(activations, {dateFilter, filterSet}){
     if(filterSet && !filterSet.has(call)) continue;
 
     const qsoCount = Number(pick(act, ['totalQSOs','qsoCount','qsos','total_qso'], 0)) || 0;
+
+    // POTA-Regel: eine Aktivierung braucht mindestens 10 QSOs, um offiziell zu
+    // zählen ("unsuccessful activation" sonst) - diese zählen wir konsequent
+    // nirgends mit, damit unsere Zahlen mit dem offiziellen POTA-Leaderboard
+    // übereinstimmen.
+    if(qsoCount < 10) continue;
+
     const cwCount = Number(pick(act, ['qsosCW'], 0)) || 0;
     const ssbCount = Number(pick(act, ['qsosPHONE','qsosSSB'], 0)) || 0;
     const digiCount = Number(pick(act, ['qsosDATA','qsosDIGI'], 0)) || 0;

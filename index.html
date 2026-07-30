@@ -120,10 +120,6 @@
   .search-row .field{flex:1; min-width:180px;}
 
   .table-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:22px;}
-  .section-divider{
-    font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;
-    letter-spacing:.5px; margin:26px 0 14px; padding-top:18px; border-top:1px solid var(--border);
-  }
   .table-block h3{
     margin:0 0 8px; font-size:12px; font-weight:700; color:var(--muted);
     text-transform:uppercase; letter-spacing:.5px;
@@ -235,6 +231,16 @@
       </div>
 
       <div class="field">
+        <label for="modeFilter">Betriebsart (QSO-Rangliste)</label>
+        <select id="modeFilter">
+          <option value="all">Alle Modes</option>
+          <option value="cw">Nur CW</option>
+          <option value="ssb">Nur SSB/Phone</option>
+          <option value="digi">Nur Digital</option>
+        </select>
+      </div>
+
+      <div class="field">
         <label for="dataSource">Datenquelle</label>
         <select id="dataSource">
           <option value="snapshot">🚀 Statischer Tages-Snapshot</option>
@@ -320,40 +326,12 @@
         <div class="pagination" id="pagActivations"></div>
       </div>
       <div class="table-block">
-        <h3>Meiste QSOs</h3>
+        <h3 id="qsosTableTitle">Meiste QSOs</h3>
         <table>
-          <thead><tr><th></th><th>Rufzeichen</th><th class="num">QSOs</th></tr></thead>
+          <thead><tr><th></th><th>Rufzeichen</th><th class="num" id="qsosTableColHeader">QSOs</th></tr></thead>
           <tbody id="tblQsos"></tbody>
         </table>
         <div class="pagination" id="pagQsos"></div>
-      </div>
-    </div>
-
-    <h3 class="section-divider">Top-Listen nach Betriebsart</h3>
-    <div class="table-grid">
-      <div class="table-block">
-        <h3>Meiste CW-QSOs</h3>
-        <table>
-          <thead><tr><th></th><th>Rufzeichen</th><th class="num">CW</th></tr></thead>
-          <tbody id="tblCw"></tbody>
-        </table>
-        <div class="pagination" id="pagCw"></div>
-      </div>
-      <div class="table-block">
-        <h3>Meiste SSB/Phone-QSOs</h3>
-        <table>
-          <thead><tr><th></th><th>Rufzeichen</th><th class="num">SSB</th></tr></thead>
-          <tbody id="tblSsb"></tbody>
-        </table>
-        <div class="pagination" id="pagSsb"></div>
-      </div>
-      <div class="table-block">
-        <h3>Meiste Digital-QSOs</h3>
-        <table>
-          <thead><tr><th></th><th>Rufzeichen</th><th class="num">Digital</th></tr></thead>
-          <tbody id="tblDigi"></tbody>
-        </table>
-        <div class="pagination" id="pagDigi"></div>
       </div>
     </div>
 
@@ -722,10 +700,19 @@ async function run(){
     }
 
     renderTable('tblActivations', [...rows].sort((a,b)=>b.activations-a.activations), 'activations');
-    renderTable('tblQsos', [...rows].sort((a,b)=>b.qsos-a.qsos), 'qsos');
-    renderTable('tblCw', rows.filter(r=>r.cw>0).sort((a,b)=>b.cw-a.cw), 'cw');
-    renderTable('tblSsb', rows.filter(r=>r.ssb>0).sort((a,b)=>b.ssb-a.ssb), 'ssb');
-    renderTable('tblDigi', rows.filter(r=>r.digi>0).sort((a,b)=>b.digi-a.digi), 'digi');
+    const modeFilter = document.getElementById('modeFilter').value; // all | cw | ssb | digi
+    const modeLabels = {all: 'QSOs', cw: 'CW-QSOs', ssb: 'SSB/Phone-QSOs', digi: 'Digital-QSOs'};
+    const modeColLabels = {all: 'QSOs', cw: 'CW', ssb: 'SSB', digi: 'Digital'};
+    const qsosField = modeFilter === 'all' ? 'qsos' : modeFilter;
+    const qsosRows = modeFilter === 'all'
+      ? [...rows]
+      : rows.filter(r => r[modeFilter] > 0);
+    qsosRows.sort((a,b) => b[qsosField] - a[qsosField]);
+
+    document.getElementById('qsosTableTitle').textContent = `Meiste ${modeLabels[modeFilter]}`;
+    document.getElementById('qsosTableColHeader').textContent = modeColLabels[modeFilter];
+
+    renderTable('tblQsos', qsosRows, qsosField);
     renderSummary(rows);
 
     resultsTitle.textContent = `Highscore – ${countryLabel}` + (filterSet ? ' (gefiltert auf Rufzeichenliste)' : '');
@@ -865,7 +852,7 @@ function searchCallsign(){
   const statusEl = document.getElementById('searchStatus');
   if(!query){ statusEl.textContent = ''; return; }
 
-  const tableIds = ['tblActivations', 'tblQsos', 'tblCw', 'tblSsb', 'tblDigi'];
+  const tableIds = ['tblActivations', 'tblQsos'];
   const foundAny = tableIds.map(id => jumpToCallsign(id, query)).some(Boolean);
 
   if(!foundAny){

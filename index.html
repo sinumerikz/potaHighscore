@@ -30,8 +30,9 @@
   }
   .header-inner{
     position:relative; max-width:1080px; margin:0 auto;
-    display:flex; align-items:flex-end; gap:16px;
+    display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
   }
+  .header-left{display:flex; align-items:flex-end; gap:16px;}
   .logo-mark{
     height:72px; width:auto; border-radius:14px; flex-shrink:0;
     background:#fff; padding:8px; object-fit:contain;
@@ -43,6 +44,18 @@
   }
   header h1{margin:0; font-size:22px; font-weight:700; letter-spacing:0;}
   header p{margin:4px 0 0; font-size:13px; color:rgba(255,255,255,.82); max-width:520px;}
+
+  .lang-switch{
+    display:flex; gap:2px; background:rgba(255,255,255,.15); border-radius:8px;
+    padding:2px; align-self:center; flex-shrink:0;
+  }
+  .lang-switch button{
+    background:transparent; color:rgba(255,255,255,.8); border:none;
+    padding:6px 12px; font-size:12px; font-weight:700; border-radius:6px;
+    cursor:pointer; transition:background .15s, color .15s;
+  }
+  .lang-switch button.active{background:#fff; color:var(--pota-green-dark);}
+  .lang-switch button:hover:not(.active){color:#fff;}
 
   .wrap{max-width:1080px;margin:0 auto;padding:24px 20px 40px;}
 
@@ -177,6 +190,7 @@
     .card{padding:18px;}
     .action-row{flex-direction:column; align-items:stretch;}
     .action-row button{width:100%;}
+    .header-inner{flex-wrap:wrap;}
   }
 </style>
 </head>
@@ -184,11 +198,17 @@
 
 <header>
   <div class="header-inner">
-    <img class="logo-mark" src="https://docs.pota.app/assets/documents/logo.png" alt="POTA Logo">
-    <div>
-      <div class="eyebrow">Parks on the Air · Community-Auswertung</div>
-      <h1>POTA Highscore</h1>
-      <p>Aktivierungen, QSOs und Betriebsarten im Vergleich — auf Basis der öffentlichen POTA-API</p>
+    <div class="header-left">
+      <img class="logo-mark" src="https://docs.pota.app/assets/documents/logo.png" alt="POTA Logo">
+      <div>
+        <div class="eyebrow" data-i18n-de="Parks on the Air · Community-Auswertung" data-i18n-en="Parks on the Air · Community Evaluation">Parks on the Air · Community-Auswertung</div>
+        <h1>POTA Highscore</h1>
+        <p data-i18n-de="Aktivierungen, QSOs und Betriebsarten im Vergleich — auf Basis der öffentlichen POTA-API" data-i18n-en="Activations, QSOs and operating modes compared — based on the public POTA API">Aktivierungen, QSOs und Betriebsarten im Vergleich — auf Basis der öffentlichen POTA-API</p>
+      </div>
+    </div>
+    <div class="lang-switch">
+      <button type="button" data-lang="de" class="active">DE</button>
+      <button type="button" data-lang="en">EN</button>
     </div>
   </div>
 </header>
@@ -196,94 +216,94 @@
 <div class="wrap">
 
   <div class="card">
-    <div class="card-title">Auswertung starten</div>
-    <div class="card-subtitle">Land, Zeitraum und Datenquelle wählen – erweiterte Optionen bei Bedarf unten aufklappen.</div>
+    <div class="card-title" data-i18n-de="Auswertung starten" data-i18n-en="Start evaluation">Auswertung starten</div>
+    <div class="card-subtitle" data-i18n-de="Land, Zeitraum und Datenquelle wählen – erweiterte Optionen bei Bedarf unten aufklappen." data-i18n-en="Choose country, time range and data source – expand advanced options below if needed.">Land, Zeitraum und Datenquelle wählen – erweiterte Optionen bei Bedarf unten aufklappen.</div>
 
     <div class="settings-grid">
       <div class="field">
-        <label for="country">Land / Programm</label>
+        <label for="country" data-i18n-de="Land / Programm" data-i18n-en="Country / Program">Land / Programm</label>
         <select id="country">
-          <option value="__world">🌍 Weltweit (alle unten gelisteten Länder)</option>
-          <option value="DE">Deutschland (DE)</option>
-          <option value="AT">Österreich (AT)</option>
-          <option value="CH">Schweiz (CH)</option>
-          <option value="HR">Kroatien (9A)</option>
-          <option value="GB">Großbritannien (GB)</option>
-          <option value="FR">Frankreich (F)</option>
-          <option value="ES">Spanien (EA)</option>
-          <option value="IT">Italien (I)</option>
-          <option value="NL">Niederlande (PA)</option>
-          <option value="BE">Belgien (ON)</option>
-          <option value="PL">Polen (SP)</option>
-          <option value="DK">Dänemark (OZ)</option>
-          <option value="SE">Schweden (SM)</option>
-          <option value="NO">Norwegen (LA)</option>
-          <option value="FI">Finnland (OH)</option>
-          <option value="US">USA (K)</option>
-          <option value="CA">Kanada (VE)</option>
-          <option value="AU">Australien (VK)</option>
-          <option value="JP">Japan (JA)</option>
-          <option value="__custom">Anderes Programm-Kürzel …</option>
+          <option value="__world" data-i18n-de="🌍 Weltweit (alle unten gelisteten Länder)" data-i18n-en="🌍 Worldwide (all countries listed below)">🌍 Weltweit (alle unten gelisteten Länder)</option>
+          <option value="DE" data-i18n-de="Deutschland (DE)" data-i18n-en="Germany (DE)">Deutschland (DE)</option>
+          <option value="AT" data-i18n-de="Österreich (AT)" data-i18n-en="Austria (AT)">Österreich (AT)</option>
+          <option value="CH" data-i18n-de="Schweiz (CH)" data-i18n-en="Switzerland (CH)">Schweiz (CH)</option>
+          <option value="HR" data-i18n-de="Kroatien (9A)" data-i18n-en="Croatia (9A)">Kroatien (9A)</option>
+          <option value="GB" data-i18n-de="Großbritannien (GB)" data-i18n-en="United Kingdom (GB)">Großbritannien (GB)</option>
+          <option value="FR" data-i18n-de="Frankreich (F)" data-i18n-en="France (F)">Frankreich (F)</option>
+          <option value="ES" data-i18n-de="Spanien (EA)" data-i18n-en="Spain (EA)">Spanien (EA)</option>
+          <option value="IT" data-i18n-de="Italien (I)" data-i18n-en="Italy (I)">Italien (I)</option>
+          <option value="NL" data-i18n-de="Niederlande (PA)" data-i18n-en="Netherlands (PA)">Niederlande (PA)</option>
+          <option value="BE" data-i18n-de="Belgien (ON)" data-i18n-en="Belgium (ON)">Belgien (ON)</option>
+          <option value="PL" data-i18n-de="Polen (SP)" data-i18n-en="Poland (SP)">Polen (SP)</option>
+          <option value="DK" data-i18n-de="Dänemark (OZ)" data-i18n-en="Denmark (OZ)">Dänemark (OZ)</option>
+          <option value="SE" data-i18n-de="Schweden (SM)" data-i18n-en="Sweden (SM)">Schweden (SM)</option>
+          <option value="NO" data-i18n-de="Norwegen (LA)" data-i18n-en="Norway (LA)">Norwegen (LA)</option>
+          <option value="FI" data-i18n-de="Finnland (OH)" data-i18n-en="Finland (OH)">Finnland (OH)</option>
+          <option value="US" data-i18n-de="USA (K)" data-i18n-en="USA (K)">USA (K)</option>
+          <option value="CA" data-i18n-de="Kanada (VE)" data-i18n-en="Canada (VE)">Kanada (VE)</option>
+          <option value="AU" data-i18n-de="Australien (VK)" data-i18n-en="Australia (VK)">Australien (VK)</option>
+          <option value="JP" data-i18n-de="Japan (JA)" data-i18n-en="Japan (JA)">Japan (JA)</option>
+          <option value="__custom" data-i18n-de="Anderes Programm-Kürzel …" data-i18n-en="Other program code …">Anderes Programm-Kürzel …</option>
         </select>
       </div>
 
       <div class="field" id="customField" style="display:none;">
-        <label for="customCountry">Programm-Kürzel</label>
-        <input type="text" id="customCountry" placeholder="z.B. DE oder DE,AT,CH">
-        <span class="hint">Mehrere Länder mit Komma trennen</span>
+        <label for="customCountry" data-i18n-de="Programm-Kürzel" data-i18n-en="Program code">Programm-Kürzel</label>
+        <input type="text" id="customCountry" data-i18n-de-ph="z.B. DE oder DE,AT,CH" data-i18n-en-ph="e.g. DE or DE,AT,CH" placeholder="z.B. DE oder DE,AT,CH">
+        <span class="hint" data-i18n-de="Mehrere Länder mit Komma trennen" data-i18n-en="Separate multiple countries with a comma">Mehrere Länder mit Komma trennen</span>
       </div>
 
       <div class="field">
-        <label for="timeframe">Zeitraum</label>
+        <label for="timeframe" data-i18n-de="Zeitraum" data-i18n-en="Time range">Zeitraum</label>
         <select id="timeframe">
-          <option value="30">Letzte 30 Tage</option>
-          <option value="year" selected>Aktuelles Jahr</option>
-          <option value="all">Gesamter Verlauf</option>
+          <option value="30" data-i18n-de="Letzte 30 Tage" data-i18n-en="Last 30 days">Letzte 30 Tage</option>
+          <option value="year" selected data-i18n-de="Aktuelles Jahr" data-i18n-en="Current year">Aktuelles Jahr</option>
+          <option value="all" data-i18n-de="Gesamter Verlauf" data-i18n-en="All time">Gesamter Verlauf</option>
           <optgroup label="Bestimmtes Jahr" id="yearOptGroup"></optgroup>
         </select>
       </div>
 
       <div class="field">
-        <label for="modeFilter">Betriebsart (QSO-Rangliste)</label>
+        <label for="modeFilter" data-i18n-de="Betriebsart (QSO-Rangliste)" data-i18n-en="Mode (QSO ranking)">Betriebsart (QSO-Rangliste)</label>
         <select id="modeFilter">
-          <option value="all">Alle Modes</option>
-          <option value="cw">Nur CW</option>
-          <option value="ssb">Nur SSB/Phone</option>
-          <option value="digi">Nur Digital</option>
+          <option value="all" data-i18n-de="Alle Modes" data-i18n-en="All modes">Alle Modes</option>
+          <option value="cw" data-i18n-de="Nur CW" data-i18n-en="CW only">Nur CW</option>
+          <option value="ssb" data-i18n-de="Nur SSB/Phone" data-i18n-en="SSB/Phone only">Nur SSB/Phone</option>
+          <option value="digi" data-i18n-de="Nur Digital" data-i18n-en="Digital only">Nur Digital</option>
         </select>
       </div>
 
       <div class="field">
-        <label for="dataSource">Datenquelle</label>
+        <label for="dataSource" data-i18n-de="Datenquelle" data-i18n-en="Data source">Datenquelle</label>
         <select id="dataSource">
-          <option value="snapshot">🚀 Statischer Tages-Snapshot</option>
-          <option value="live">🔴 Live von der POTA-API</option>
+          <option value="snapshot" data-i18n-de="🚀 Statischer Tages-Snapshot" data-i18n-en="🚀 Static daily snapshot">🚀 Statischer Tages-Snapshot</option>
+          <option value="live" data-i18n-de="🔴 Live von der POTA-API" data-i18n-en="🔴 Live from the POTA API">🔴 Live von der POTA-API</option>
         </select>
-        <span class="hint">Snapshot: Top 150 Parks/Land, DE alle Parks · bis 24 Std. alt</span>
+        <span class="hint" data-i18n-de="Snapshot: Top 150 Parks/Land, DE alle Parks · bis 24 Std. alt" data-i18n-en="Snapshot: top 150 parks/country, all parks for Germany · up to 24h old">Snapshot: Top 150 Parks/Land, DE alle Parks · bis 24 Std. alt</span>
       </div>
 
       <div class="field" id="limitField" style="display:none;">
-        <label for="limit">Max. Parks pro Land</label>
+        <label for="limit" data-i18n-de="Max. Parks pro Land" data-i18n-en="Max. parks per country">Max. Parks pro Land</label>
         <select id="limit">
-          <option value="40">40 aktivste Parks/Land</option>
-          <option value="80" selected>80 aktivste Parks/Land</option>
-          <option value="150">150 aktivste Parks/Land</option>
+          <option value="40" data-i18n-de="40 aktivste Parks/Land" data-i18n-en="40 most active parks/country">40 aktivste Parks/Land</option>
+          <option value="80" selected data-i18n-de="80 aktivste Parks/Land" data-i18n-en="80 most active parks/country">80 aktivste Parks/Land</option>
+          <option value="150" data-i18n-de="150 aktivste Parks/Land" data-i18n-en="150 most active parks/country">150 aktivste Parks/Land</option>
           <option value="99999" id="limitAllOption">Alle aktivierten Parks/Land (langsam!)</option>
         </select>
       </div>
     </div>
 
     <details class="advanced">
-      <summary>Erweitert: nur bestimmte Rufzeichen auswerten</summary>
+      <summary data-i18n-de="Erweitert: nur bestimmte Rufzeichen auswerten" data-i18n-en="Advanced: only evaluate specific callsigns">Erweitert: nur bestimmte Rufzeichen auswerten</summary>
       <div class="advanced-body">
         <div class="checkline">
           <input type="checkbox" id="useCallFilter">
-          <label for="useCallFilter">Nur Rufzeichen aus einer Liste berücksichtigen</label>
+          <label for="useCallFilter" data-i18n-de="Nur Rufzeichen aus einer Liste berücksichtigen" data-i18n-en="Only include callsigns from a list">Nur Rufzeichen aus einer Liste berücksichtigen</label>
         </div>
 
         <div class="settings-grid">
           <div class="field" style="grid-column:1 / -1;">
-            <label for="callFilterUrl">Rufzeichen-Liste (URL zu einer .txt Datei)</label>
+            <label for="callFilterUrl" data-i18n-de="Rufzeichen-Liste (URL zu einer .txt Datei)" data-i18n-en="Callsign list (URL to a .txt file)">Rufzeichen-Liste (URL zu einer .txt Datei)</label>
             <input type="text" id="callFilterUrl"
                    value="https://calls.draussenfunker.de/df-polo-notes.txt">
           </div>
@@ -291,24 +311,24 @@
 
         <div class="checkline">
           <input type="checkbox" id="liveReload">
-          <label for="liveReload">Liste live von der URL neu laden (statt eingebetteter Version vom 2026-07-30)</label>
+          <label for="liveReload" data-i18n-de="Liste live von der URL neu laden (statt eingebetteter Version vom 2026-07-30)" data-i18n-en="Reload list live from the URL (instead of the embedded version from 2026-07-30)">Liste live von der URL neu laden (statt eingebetteter Version vom 2026-07-30)</label>
         </div>
 
         <div class="field">
-          <label for="callFilterManual">Alternativ: Liste manuell einfügen</label>
-          <span class="hint">Wird bevorzugt genutzt, wenn nicht leer – z.B. falls das URL-Laden an CORS scheitert</span>
+          <label for="callFilterManual" data-i18n-de="Alternativ: Liste manuell einfügen" data-i18n-en="Alternative: paste list manually">Alternativ: Liste manuell einfügen</label>
+          <span class="hint" data-i18n-de="Wird bevorzugt genutzt, wenn nicht leer – z.B. falls das URL-Laden an CORS scheitert" data-i18n-en="Used preferentially if not empty – e.g. if URL loading fails due to CORS">Wird bevorzugt genutzt, wenn nicht leer – z.B. falls das URL-Laden an CORS scheitert</span>
           <textarea id="callFilterManual" rows="4" placeholder="DL1ABC Name – DF&#10;DL2XYZ Name – DF"></textarea>
         </div>
       </div>
     </details>
 
     <div class="action-row">
-      <button id="loadBtn">Highscore laden</button>
+      <button id="loadBtn" data-i18n-de="Highscore laden" data-i18n-en="Load highscore">Highscore laden</button>
     </div>
 
     <div class="progress-wrap" id="progressWrap">
       <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
-      <div class="progress-label" id="progressLabel">Lade Parkliste …</div>
+      <div class="progress-label" id="progressLabel" data-i18n-de="Lade Parkliste …" data-i18n-en="Loading park list …">Lade Parkliste …</div>
     </div>
     <div class="status" id="statusLine"></div>
   </div>
@@ -322,18 +342,18 @@
 
     <div class="search-row">
       <div class="field">
-        <label for="callSearch">Rufzeichen suchen &amp; zur Position springen</label>
-        <input type="text" id="callSearch" placeholder="z.B. DL1ABC" style="text-transform:uppercase;">
+        <label for="callSearch" data-i18n-de="Rufzeichen suchen & zur Position springen" data-i18n-en="Search callsign & jump to position">Rufzeichen suchen &amp; zur Position springen</label>
+        <input type="text" id="callSearch" data-i18n-de-ph="z.B. DL1ABC" data-i18n-en-ph="e.g. DL1ABC" placeholder="z.B. DL1ABC" style="text-transform:uppercase;">
       </div>
-      <button id="searchBtn" class="secondary" type="button">Springen</button>
+      <button id="searchBtn" class="secondary" type="button" data-i18n-de="Springen" data-i18n-en="Jump">Springen</button>
       <span id="searchStatus" class="hint"></span>
     </div>
 
     <div class="table-grid">
       <div class="table-block">
-        <h3>Meiste Aktivierungen</h3>
+        <h3 data-i18n-de="Meiste Aktivierungen" data-i18n-en="Most activations">Meiste Aktivierungen</h3>
         <table>
-          <thead><tr><th></th><th>Rufzeichen</th><th class="num">Aktivierungen</th></tr></thead>
+          <thead><tr><th></th><th data-i18n-de="Rufzeichen" data-i18n-en="Callsign">Rufzeichen</th><th class="num" data-i18n-de="Aktivierungen" data-i18n-en="Activations">Aktivierungen</th></tr></thead>
           <tbody id="tblActivations"></tbody>
         </table>
         <div class="pagination" id="pagActivations"></div>
@@ -341,27 +361,27 @@
       <div class="table-block">
         <h3 id="qsosTableTitle">Meiste QSOs</h3>
         <table>
-          <thead><tr><th></th><th>Rufzeichen</th><th class="num" id="qsosTableColHeader">QSOs</th></tr></thead>
+          <thead><tr><th></th><th data-i18n-de="Rufzeichen" data-i18n-en="Callsign">Rufzeichen</th><th class="num" id="qsosTableColHeader">QSOs</th></tr></thead>
           <tbody id="tblQsos"></tbody>
         </table>
         <div class="pagination" id="pagQsos"></div>
       </div>
     </div>
 
-    <p class="legend">
+    <p class="legend" id="legendText">
       <b>CW</b> &nbsp; 🎙️ SSB/Phone &nbsp; 💻 Digital — Zahl dahinter = Anzahl QSOs in diesem Mode.
       (P2P-Zahlen liefert dieser API-Endpunkt leider nicht mit.)
     </p>
 
     <details class="debug">
-      <summary>Debug / Rohdaten (erstes Park-Aktivierungsobjekt)</summary>
+      <summary data-i18n-de="Debug / Rohdaten (erstes Park-Aktivierungsobjekt)" data-i18n-en="Debug / raw data (first park activation object)">Debug / Rohdaten (erstes Park-Aktivierungsobjekt)</summary>
       <pre id="debugOut">–</pre>
     </details>
   </div>
 
 </div>
 
-<footer>
+<footer id="footerText">
   Nutzt die inoffizielle POTA-API (api.pota.app). Keine offizielle Verbindung zu Parks on the Air.<br>
   Endpunkte/Feldnamen sind nicht dokumentiert und können sich ändern – siehe Debug-Bereich bei Problemen.
 </footer>
@@ -369,22 +389,66 @@
 <script>
 const API = "https://api.pota.app";
 
+// --- Sprache (still im Hintergrund gemerkt, wie der API-Cache) ---
+let LANG = localStorage.getItem('potaLang') === 'en' ? 'en' : 'de';
+function L(de, en){ return LANG === 'de' ? de : en; }
+function fmtNum(n){ return n.toLocaleString(LANG === 'de' ? 'de-DE' : 'en-US'); }
+function fmtDate(d){ return d.toLocaleString(LANG === 'de' ? 'de-DE' : 'en-US'); }
+
+const LEGEND_HTML = {
+  de: '<b>CW</b> &nbsp; 🎙️ SSB/Phone &nbsp; 💻 Digital — Zahl dahinter = Anzahl QSOs in diesem Mode. (P2P-Zahlen liefert dieser API-Endpunkt leider nicht mit.)',
+  en: '<b>CW</b> &nbsp; 🎙️ SSB/Phone &nbsp; 💻 Digital — number = QSO count in that mode. (This API endpoint unfortunately does not provide P2P numbers.)'
+};
+const FOOTER_HTML = {
+  de: 'Nutzt die inoffizielle POTA-API (api.pota.app). Keine offizielle Verbindung zu Parks on the Air.<br>Endpunkte/Feldnamen sind nicht dokumentiert und können sich ändern – siehe Debug-Bereich bei Problemen.',
+  en: 'Uses the unofficial POTA API (api.pota.app). No official connection to Parks on the Air.<br>Endpoints/field names are undocumented and may change – see the debug section if something looks wrong.'
+};
+
+function applyLanguage(lang){
+  LANG = lang;
+  localStorage.setItem('potaLang', lang);
+  document.documentElement.lang = lang;
+
+  document.querySelectorAll('[data-i18n-de]').forEach(el => {
+    el.textContent = lang === 'de' ? el.dataset.i18nDe : el.dataset.i18nEn;
+  });
+  document.querySelectorAll('[data-i18n-de-ph]').forEach(el => {
+    el.placeholder = lang === 'de' ? el.dataset.i18nDePh : el.dataset.i18nEnPh;
+  });
+  document.querySelectorAll('.lang-switch button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+
+  document.getElementById('legendText').innerHTML = LEGEND_HTML[lang];
+  document.getElementById('footerText').innerHTML = FOOTER_HTML[lang];
+
+  repopulateYearOptions();
+  if(typeof syncLimitAllOption === 'function') syncLimitAllOption();
+}
+
+document.querySelectorAll('.lang-switch button').forEach(btn => {
+  btn.addEventListener('click', () => applyLanguage(btn.dataset.lang));
+});
+
 const countrySel = document.getElementById('country');
 const customField = document.getElementById('customField');
 const customInput = document.getElementById('customCountry');
 const WORLD_COUNTRIES = ['DE','AT','CH','HR','GB','FR','ES','IT','NL','BE','PL','DK','SE','NO','FI','US','CA','AU','JP'];
 
 // POTA startete 2018 -> Jahres-Auswahl im Zeitraum-Dropdown befüllen
-(function populateYearOptions(){
+function repopulateYearOptions(){
   const grp = document.getElementById('yearOptGroup');
+  grp.innerHTML = '';
+  grp.label = L('Bestimmtes Jahr', 'Specific year');
   const currentYear = new Date().getFullYear();
   for(let y = currentYear; y >= 2018; y--){
     const opt = document.createElement('option');
     opt.value = 'y' + y;
-    opt.textContent = 'Jahr ' + y;
+    opt.textContent = L('Jahr ', 'Year ') + y;
     grp.appendChild(opt);
   }
-})();
+}
+repopulateYearOptions();
 
 countrySel.addEventListener('change', () => {
   customField.style.display = countrySel.value === '__custom' ? 'flex' : 'none';
@@ -405,8 +469,8 @@ function syncLimitAllOption(){
   const isWorldSelected = countrySel.value === '__world';
   limitAllOption.disabled = isWorldSelected;
   limitAllOption.textContent = isWorldSelected
-    ? 'Alle aktivierten Parks/Land (bei Weltweit nicht möglich)'
-    : 'Alle aktivierten Parks/Land (langsam!)';
+    ? L('Alle aktivierten Parks/Land (bei Weltweit nicht möglich)', 'All activated parks/country (not available for Worldwide)')
+    : L('Alle aktivierten Parks/Land (langsam!)', 'All activated parks/country (slow!)');
   // Falls "Alle" gerade ausgewählt war und man auf Weltweit wechselt:
   // auf einen sinnvollen Wert zurückfallen, statt bei einer deaktivierten Option zu bleiben.
   if(isWorldSelected && limitSel.value === '99999'){
@@ -443,11 +507,7 @@ function pick(obj, names, def){
   return def;
 }
 
-// Stiller, unsichtbarer Cache für POTA-API-Antworten (nur Live-Modus betroffen;
-// der Snapshot-Modus liest ohnehin eine eigene, bereits vorberechnete Datei).
-// Kein UI-Toggle, kein Clear-Button – läuft einfach automatisch im Hintergrund,
-// damit wiederholte Live-Abfragen innerhalb von 12 Std. nicht erneut alle
-// hunderte/tausende Park-Requests auslösen müssen.
+// --- Stiller, unsichtbarer Cache für POTA-API-Antworten (nur Live-Modus betroffen) ---
 const API_CACHE_PREFIX = 'potaApiCache:';
 const API_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 Stunden
 
@@ -513,22 +573,22 @@ async function fetchTextViaProxy(url){
 async function loadCallFilter(url){
   const manual = document.getElementById('callFilterManual').value.trim();
   if(manual){
-    return {calls: parseCallList(manual), source: 'manuell eingefügt'};
+    return {calls: parseCallList(manual), source: L('manuell eingefügt', 'pasted manually')};
   }
   if(!document.getElementById('liveReload').checked){
-    return {calls: new Set(EMBEDDED_CALL_LIST), source: `eingebettete Liste (Stand ${EMBEDDED_CALL_LIST_DATE})`};
+    return {calls: new Set(EMBEDDED_CALL_LIST), source: L(`eingebettete Liste (Stand ${EMBEDDED_CALL_LIST_DATE})`, `embedded list (as of ${EMBEDDED_CALL_LIST_DATE})`)};
   }
   try{
     const text = await fetchTextDirect(url);
-    return {calls: parseCallList(text), source: 'live von URL geladen'};
+    return {calls: parseCallList(text), source: L('live von URL geladen', 'loaded live from URL')};
   }catch(e){
-    setStatus('Direktes Laden blockiert (CORS) – versuche Proxy-Fallback …');
+    setStatus(L('Direktes Laden blockiert (CORS) – versuche Proxy-Fallback …', 'Direct loading blocked (CORS) – trying proxy fallback …'));
     try{
       const text = await fetchTextViaProxy(url);
-      return {calls: parseCallList(text), source: 'live via Proxy geladen'};
+      return {calls: parseCallList(text), source: L('live via Proxy geladen', 'loaded live via proxy')};
     }catch(e2){
-      setStatus('Live-Laden fehlgeschlagen – nutze eingebettete Liste als Fallback.');
-      return {calls: new Set(EMBEDDED_CALL_LIST), source: `eingebettete Liste (Stand ${EMBEDDED_CALL_LIST_DATE}, Fallback)`};
+      setStatus(L('Live-Laden fehlgeschlagen – nutze eingebettete Liste als Fallback.', 'Live loading failed – using embedded list as fallback.'));
+      return {calls: new Set(EMBEDDED_CALL_LIST), source: L(`eingebettete Liste (Stand ${EMBEDDED_CALL_LIST_DATE}, Fallback)`, `embedded list (as of ${EMBEDDED_CALL_LIST_DATE}, fallback)`)};
     }
   }
 }
@@ -554,8 +614,6 @@ function baseCallsign(call){
   // strip /P, /QRP, /M etc. für saubereres Zusammenzählen
   return (call || '').toUpperCase().split('/')[0];
 }
-
-
 
 function aggregateActivations(activations, {dateFilter, filterSet}){
   const agg = {}; // call -> {activations:Set, qsos:0, cw:0, ssb:0, digi:0}
@@ -613,7 +671,7 @@ async function run(){
   loadBtn.disabled = true;
   resultsPanel.style.display = 'none';
   setStatus('');
-  setProgress(2, 'Starte …');
+  setProgress(2, L('Starte …', 'Starting …'));
 
   try{
     const isWorld = countrySel.value === '__world';
@@ -622,10 +680,10 @@ async function run(){
 
     if(isWorld){
       countryList = WORLD_COUNTRIES;
-      countryLabel = 'Weltweit';
+      countryLabel = L('Weltweit', 'Worldwide');
     } else if(countrySel.value === '__custom'){
       const raw = customInput.value.trim();
-      if(!raw) throw new Error('Bitte ein Programm-Kürzel angeben.');
+      if(!raw) throw new Error(L('Bitte ein Programm-Kürzel angeben.', 'Please enter a program code.'));
       countryList = raw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
       countryLabel = countryList.join(', ');
     } else {
@@ -641,37 +699,46 @@ async function run(){
     const useFilter = document.getElementById('useCallFilter').checked;
     let filterSet = null;
     if(useFilter){
-      setProgress(4, 'Lade Rufzeichen-Filterliste …');
+      setProgress(4, L('Lade Rufzeichen-Filterliste …', 'Loading callsign filter list …'));
       const res = await loadCallFilter(document.getElementById('callFilterUrl').value.trim());
       filterSet = res.calls;
       const sample = [...filterSet].slice(0, 6).join(', ');
-      setStatus(`Rufzeichen-Filter aktiv (${res.source}): ${filterSet.size} Rufzeichen erkannt (z.B. ${sample} …)`);
+      setStatus(L(
+        `Rufzeichen-Filter aktiv (${res.source}): ${filterSet.size} Rufzeichen erkannt (z.B. ${sample} …)`,
+        `Callsign filter active (${res.source}): ${filterSet.size} callsigns detected (e.g. ${sample} …)`
+      ));
     }
 
     let rows, firstSample, statusExtra = '';
 
     if(dataSource === 'snapshot'){
       // --- Statischer Tages-Snapshot aus data/pota-snapshot.json (liegt im selben Repo) ---
-      setProgress(20, 'Lade statischen Snapshot …');
+      setProgress(20, L('Lade statischen Snapshot …', 'Loading static snapshot …'));
       let snap;
       try{
         const res = await fetch('./data/pota-snapshot.json', {cache:'no-store'});
         if(!res.ok) throw new Error('HTTP ' + res.status);
         snap = await res.json();
       }catch(e){
-        throw new Error('Snapshot (data/pota-snapshot.json) konnte nicht geladen werden. Wurde der GitHub-Actions-Workflow schon einmal ausgeführt? Alternativ oben auf "🔴 Live von der POTA-API" umschalten.');
+        throw new Error(L(
+          'Snapshot (data/pota-snapshot.json) konnte nicht geladen werden. Wurde der GitHub-Actions-Workflow schon einmal ausgeführt? Alternativ oben auf "🔴 Live von der POTA-API" umschalten.',
+          'Snapshot (data/pota-snapshot.json) could not be loaded. Has the GitHub Actions workflow run at least once? Alternatively switch to "🔴 Live from the POTA API" above.'
+        ));
       }
 
       const missing = countryList.filter(cc => !snap.countries_ok.includes(cc));
       if(missing.length > 0){
-        setStatus(`Hinweis: Diese Länder sind nicht im Snapshot enthalten und werden ignoriert: ${missing.join(', ')}. Für diese Länder bitte "Live von der POTA-API" nutzen.`);
+        setStatus(L(
+          `Hinweis: Diese Länder sind nicht im Snapshot enthalten und werden ignoriert: ${missing.join(', ')}. Für diese Länder bitte "Live von der POTA-API" nutzen.`,
+          `Note: these countries are not included in the snapshot and will be ignored: ${missing.join(', ')}. Please use "Live from the POTA API" for these.`
+        ));
       }
 
       const relevant = isWorld
         ? snap.activations
         : snap.activations.filter(a => countryList.includes(a._country));
 
-      setProgress(70, 'Werte Snapshot aus …');
+      setProgress(70, L('Werte Snapshot aus …', 'Evaluating snapshot …'));
       ({rows, firstSample} = aggregateActivations(relevant, {dateFilter, filterSet}));
 
       const genDate = new Date(snap.generated_at);
@@ -681,12 +748,13 @@ async function run(){
         const exceptions = relevantCC
           .filter(cc => snap.parks_per_country_by_country[cc] !== undefined
             && snap.parks_per_country_by_country[cc] !== snap.parks_per_country)
-          .map(cc => `${cc}: ${snap.parks_per_country_by_country[cc] >= 99999 ? 'alle' : snap.parks_per_country_by_country[cc]}`);
-        parksPerCountryNote = ` · Top ${snap.parks_per_country} Parks/Land` + (exceptions.length ? ` (Ausnahmen: ${exceptions.join(', ')})` : '');
+          .map(cc => `${cc}: ${snap.parks_per_country_by_country[cc] >= 99999 ? L('alle','all') : snap.parks_per_country_by_country[cc]}`);
+        parksPerCountryNote = L(` · Top ${snap.parks_per_country} Parks/Land`, ` · Top ${snap.parks_per_country} parks/country`)
+          + (exceptions.length ? L(` (Ausnahmen: ${exceptions.join(', ')})`, ` (exceptions: ${exceptions.join(', ')})`) : '');
       } else if(snap.parks_per_country && snap.parks_per_country < 99999){
-        parksPerCountryNote = ` · Top ${snap.parks_per_country} Parks/Land`;
+        parksPerCountryNote = L(` · Top ${snap.parks_per_country} Parks/Land`, ` · Top ${snap.parks_per_country} parks/country`);
       }
-      statusExtra = `Snapshot-Stand: ${isNaN(genDate) ? snap.generated_at : genDate.toLocaleString('de-DE')}${parksPerCountryNote}`;
+      statusExtra = L('Snapshot-Stand: ', 'Snapshot as of: ') + `${isNaN(genDate) ? snap.generated_at : fmtDate(genDate)}${parksPerCountryNote}`;
 
     } else {
       // --- Live-Abfrage direkt bei api.pota.app ---
@@ -702,7 +770,7 @@ async function run(){
       for(let i = 0; i < countryList.length; i++){
         const cc = countryList[i];
         setProgress(4 + Math.round((i/countryList.length)*10),
-          `Lade Parkliste: Land ${i+1}/${countryList.length} (${cc}) …`);
+          L(`Lade Parkliste: Land ${i+1}/${countryList.length} (${cc}) …`, `Loading park list: country ${i+1}/${countryList.length} (${cc}) …`));
         try{
           const parks = await fetchJson(`${API}/program/parks/${encodeURIComponent(cc)}`);
           if(Array.isArray(parks) && parks.length > 0){
@@ -717,11 +785,14 @@ async function run(){
 
       if(activated.length === 0){
         throw new Error(countryList.length > 1
-          ? `Keine Parks für die Länder "${countryLabel}" gefunden. Kürzel prüfen (z.B. DE, US, GB).`
-          : `Keine Parks für "${countryLabel}" gefunden. Kürzel prüfen (z.B. DE, US, GB, JA-Prefix etc.).`);
+          ? L(`Keine Parks für die Länder "${countryLabel}" gefunden. Kürzel prüfen (z.B. DE, US, GB).`, `No parks found for the countries "${countryLabel}". Check the codes (e.g. DE, US, GB).`)
+          : L(`Keine Parks für "${countryLabel}" gefunden. Kürzel prüfen (z.B. DE, US, GB, JA-Prefix etc.).`, `No parks found for "${countryLabel}". Check the code (e.g. DE, US, GB, JA prefix etc.).`));
       }
       if(failedCountries.length > 0 && countryList.length > 1){
-        setStatus(`Hinweis: Für folgende Kürzel wurden keine Parks gefunden und sie wurden übersprungen: ${failedCountries.join(', ')}`);
+        setStatus(L(
+          `Hinweis: Für folgende Kürzel wurden keine Parks gefunden und sie wurden übersprungen: ${failedCountries.join(', ')}`,
+          `Note: no parks were found for the following codes, so they were skipped: ${failedCountries.join(', ')}`
+        ));
       }
 
       const allActs = [];
@@ -731,7 +802,7 @@ async function run(){
         if(!ref) { done++; continue; }
 
         setProgress(15 + Math.round((done/activated.length)*80),
-          `Lade Aktivierungen: ${park.name || ref} (${done+1}/${activated.length})`);
+          L(`Lade Aktivierungen: ${park.name || ref} (${done+1}/${activated.length})`, `Loading activations: ${park.name || ref} (${done+1}/${activated.length})`));
 
         let acts = [];
         try{
@@ -748,35 +819,41 @@ async function run(){
       }
 
       ({rows, firstSample} = aggregateActivations(allActs, {dateFilter, filterSet}));
-      statusExtra = `${activated.length} Parks live abgefragt.`;
+      statusExtra = L(`${activated.length} Parks live abgefragt.`, `${activated.length} parks queried live.`);
     }
 
-    debugOut.textContent = firstSample ? JSON.stringify(firstSample, null, 2) : 'Keine Aktivierungsdaten erhalten.';
+    debugOut.textContent = firstSample ? JSON.stringify(firstSample, null, 2) : L('Keine Aktivierungsdaten erhalten.', 'No activation data received.');
 
     if(rows.length === 0){
-      setProgress(100, 'Fertig.');
-      throw new Error('Keine passenden Aktivierungen im gewählten Zeitraum/Filter gefunden. (Prüfe im Debug-Bereich, ob die Feldnamen der API zu diesem Skript passen.)');
+      setProgress(100, L('Fertig.', 'Done.'));
+      throw new Error(L(
+        'Keine passenden Aktivierungen im gewählten Zeitraum/Filter gefunden. (Prüfe im Debug-Bereich, ob die Feldnamen der API zu diesem Skript passen.)',
+        'No matching activations found for the selected time range/filter. (Check the debug section to see whether the API field names still match this script.)'
+      ));
     }
 
     renderTable('tblActivations', [...rows].sort((a,b)=>b.activations-a.activations), 'activations');
     const modeFilter = document.getElementById('modeFilter').value; // all | cw | ssb | digi
-    const modeLabels = {all: 'QSOs', cw: 'CW-QSOs', ssb: 'SSB/Phone-QSOs', digi: 'Digital-QSOs'};
-    const modeColLabels = {all: 'QSOs', cw: 'CW', ssb: 'SSB', digi: 'Digital'};
+    const modeLabels = L(
+      {all: 'QSOs', cw: 'CW-QSOs', ssb: 'SSB/Phone-QSOs', digi: 'Digital-QSOs'},
+      {all: 'QSOs', cw: 'CW QSOs', ssb: 'SSB/Phone QSOs', digi: 'Digital QSOs'}
+    );
+    const modeColLabels = {all: 'QSOs', cw: 'CW', ssb: 'SSB', digi: L('Digital','Digital')};
     const qsosField = modeFilter === 'all' ? 'qsos' : modeFilter;
     const qsosRows = modeFilter === 'all'
       ? [...rows]
       : rows.filter(r => r[modeFilter] > 0);
     qsosRows.sort((a,b) => b[qsosField] - a[qsosField]);
 
-    document.getElementById('qsosTableTitle').textContent = `Meiste ${modeLabels[modeFilter]}`;
+    document.getElementById('qsosTableTitle').textContent = L('Meiste ', 'Most ') + modeLabels[modeFilter];
     document.getElementById('qsosTableColHeader').textContent = modeColLabels[modeFilter];
 
     renderTable('tblQsos', qsosRows, qsosField);
     renderSummary(rows);
 
-    resultsTitle.textContent = `Highscore – ${countryLabel}` + (filterSet ? ' (gefiltert auf Rufzeichenliste)' : '');
+    resultsTitle.textContent = `Highscore – ${countryLabel}` + (filterSet ? L(' (gefiltert auf Rufzeichenliste)', ' (filtered to callsign list)') : '');
     resultsPanel.style.display = 'block';
-    setProgress(100, `Fertig – ${rows.length} Rufzeichen gefunden. ${statusExtra}`);
+    setProgress(100, L(`Fertig – ${rows.length} Rufzeichen gefunden. `, `Done – ${rows.length} callsigns found. `) + statusExtra);
   }catch(err){
     console.error(err);
     setStatus(err.message || String(err), true);
@@ -795,15 +872,18 @@ function renderSummary(rows){
     return acc;
   }, {activations:0, qsos:0, cw:0, ssb:0, digi:0});
 
-  const fmt = n => n.toLocaleString('de-DE');
   const box = document.getElementById('summaryBox');
+  const labels = L(
+    {calls:'Rufzeichen', acts:'Aktivierungen', qsos:'QSOs gesamt', cw:'CW', ssb:'SSB/Phone', digi:'Digital'},
+    {calls:'Callsigns', acts:'Activations', qsos:'QSOs total', cw:'CW', ssb:'SSB/Phone', digi:'Digital'}
+  );
   box.innerHTML = `
-    <div class="stat-card"><div class="label">Rufzeichen</div><div class="value">${fmt(rows.length)}</div></div>
-    <div class="stat-card"><div class="label">Aktivierungen</div><div class="value">${fmt(totals.activations)}</div></div>
-    <div class="stat-card"><div class="label">QSOs gesamt</div><div class="value">${fmt(totals.qsos)}</div></div>
-    <div class="stat-card"><div class="label">CW</div><div class="value">${fmt(totals.cw)}</div></div>
-    <div class="stat-card"><div class="label">SSB/Phone</div><div class="value">${fmt(totals.ssb)}</div></div>
-    <div class="stat-card"><div class="label">Digital</div><div class="value">${fmt(totals.digi)}</div></div>
+    <div class="stat-card"><div class="label">${labels.calls}</div><div class="value">${fmtNum(rows.length)}</div></div>
+    <div class="stat-card"><div class="label">${labels.acts}</div><div class="value">${fmtNum(totals.activations)}</div></div>
+    <div class="stat-card"><div class="label">${labels.qsos}</div><div class="value">${fmtNum(totals.qsos)}</div></div>
+    <div class="stat-card"><div class="label">${labels.cw}</div><div class="value">${fmtNum(totals.cw)}</div></div>
+    <div class="stat-card"><div class="label">${labels.ssb}</div><div class="value">${fmtNum(totals.ssb)}</div></div>
+    <div class="stat-card"><div class="label">${labels.digi}</div><div class="value">${fmtNum(totals.digi)}</div></div>
   `;
 }
 
@@ -842,7 +922,7 @@ function renderPage(tbodyId){
     tr.innerHTML = `
       <td class="rank">${medals[rank] || (rank+1)}</td>
       <td class="call"><a href="https://pota.app/#/profile/${encodeURIComponent(r.call)}" target="_blank" rel="noopener" class="call-link">${r.call}</a>${modeBadges(r)}</td>
-      <td class="num">${r[field].toLocaleString('de-DE')}</td>
+      <td class="num">${fmtNum(r[field])}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -860,8 +940,8 @@ function renderPaginationControls(tbodyId, totalPages){
   if(totalPages <= 1){ pagEl.innerHTML = ''; return; }
 
   let html = '';
-  html += `<button data-goto="0" ${cur===0?'disabled':''} title="Erste Seite">⏮</button>`;
-  html += `<button data-goto="${cur-1}" ${cur===0?'disabled':''} title="Vorherige Seite">◀</button>`;
+  html += `<button data-goto="0" ${cur===0?'disabled':''} title="${L('Erste Seite','First page')}">⏮</button>`;
+  html += `<button data-goto="${cur-1}" ${cur===0?'disabled':''} title="${L('Vorherige Seite','Previous page')}">◀</button>`;
 
   // Sichtbare Seitenzahlen um die aktuelle Seite herum
   const windowSize = 2;
@@ -873,9 +953,9 @@ function renderPaginationControls(tbodyId, totalPages){
   }
   if(to < totalPages - 1) html += `<span class="pg-info">…</span>`;
 
-  html += `<button data-goto="${cur+1}" ${cur===totalPages-1?'disabled':''} title="Nächste Seite">▶</button>`;
-  html += `<button data-goto="${totalPages-1}" ${cur===totalPages-1?'disabled':''} title="Letzte Seite">⏭</button>`;
-  html += `<span class="pg-info">Seite ${cur+1} / ${totalPages}</span>`;
+  html += `<button data-goto="${cur+1}" ${cur===totalPages-1?'disabled':''} title="${L('Nächste Seite','Next page')}">▶</button>`;
+  html += `<button data-goto="${totalPages-1}" ${cur===totalPages-1?'disabled':''} title="${L('Letzte Seite','Last page')}">⏭</button>`;
+  html += `<span class="pg-info">${L(`Seite ${cur+1} / ${totalPages}`, `Page ${cur+1} / ${totalPages}`)}</span>`;
 
   pagEl.innerHTML = html;
   pagEl.querySelectorAll('button[data-goto]').forEach(btn => {
@@ -915,10 +995,10 @@ function searchCallsign(){
   const foundAny = tableIds.map(id => jumpToCallsign(id, query)).some(Boolean);
 
   if(!foundAny){
-    statusEl.textContent = `„${query}" wurde in der aktuellen Auswertung nicht gefunden.`;
+    statusEl.textContent = L(`„${query}" wurde in der aktuellen Auswertung nicht gefunden.`, `"${query}" was not found in the current results.`);
     statusEl.style.color = '#b3261e';
   } else {
-    statusEl.textContent = `„${query}" gefunden und markiert.`;
+    statusEl.textContent = L(`„${query}" gefunden und markiert.`, `"${query}" found and highlighted.`);
     statusEl.style.color = 'var(--muted)';
   }
 }
@@ -929,6 +1009,9 @@ document.getElementById('callSearch').addEventListener('keydown', e => {
 });
 
 loadBtn.addEventListener('click', run);
+
+// Anfangs-Sprache anwenden (aus localStorage oder Default 'de')
+applyLanguage(LANG);
 </script>
 
 </body>

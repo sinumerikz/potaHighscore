@@ -189,6 +189,7 @@
           <option value="snapshot">🚀 Statischer Tages-Snapshot (schnell, bis zu 24 Std. alt)</option>
           <option value="live">🔴 Live von der POTA-API (aktuell, aber viele Requests/langsam)</option>
         </select>
+        <span style="font-size:11px; color:var(--muted);">Snapshot enthält jeweils die Top 150 aktivsten Parks pro Land</span>
       </div>
       <div class="field">
         <button id="loadBtn">Highscore laden</button>
@@ -533,7 +534,10 @@ async function run(){
       ({rows, firstSample} = aggregateActivations(relevant, {dateFilter, filterSet}));
 
       const genDate = new Date(snap.generated_at);
-      statusExtra = `Snapshot-Stand: ${isNaN(genDate) ? snap.generated_at : genDate.toLocaleString('de-DE')}`;
+      const parksPerCountryNote = snap.parks_per_country && snap.parks_per_country < 99999
+        ? ` · Top ${snap.parks_per_country} Parks/Land`
+        : '';
+      statusExtra = `Snapshot-Stand: ${isNaN(genDate) ? snap.generated_at : genDate.toLocaleString('de-DE')}${parksPerCountryNote}`;
 
     } else {
       // --- Live-Abfrage direkt bei api.pota.app ---

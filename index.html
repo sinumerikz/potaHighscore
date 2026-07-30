@@ -121,9 +121,11 @@
       <div class="field">
         <label for="country">Land / Programm</label>
         <select id="country">
+          <option value="__world">🌍 Weltweit (alle unten gelisteten Länder kombiniert)</option>
           <option value="DE">Deutschland (DE)</option>
           <option value="AT">Österreich (AT)</option>
           <option value="CH">Schweiz (CH)</option>
+          <option value="HR">Kroatien (9A)</option>
           <option value="GB">Großbritannien (GB)</option>
           <option value="FR">Frankreich (F)</option>
           <option value="ES">Spanien (EA)</option>
@@ -155,12 +157,12 @@
         </select>
       </div>
       <div class="field">
-        <label for="limit">Max. Parks laden (Performance)</label>
+        <label for="limit">Max. Parks pro Land (Performance)</label>
         <select id="limit">
-          <option value="40">40 aktivste Parks</option>
-          <option value="80" selected>80 aktivste Parks</option>
-          <option value="150">150 aktivste Parks</option>
-          <option value="99999">Alle aktivierten Parks (langsam!)</option>
+          <option value="40">40 aktivste Parks/Land</option>
+          <option value="80" selected>80 aktivste Parks/Land</option>
+          <option value="150">150 aktivste Parks/Land</option>
+          <option value="99999">Alle aktivierten Parks/Land (langsam!)</option>
         </select>
       </div>
       <div class="field">
@@ -242,6 +244,8 @@ const API = "https://api.pota.app";
 const countrySel = document.getElementById('country');
 const customField = document.getElementById('customField');
 const customInput = document.getElementById('customCountry');
+const WORLD_COUNTRIES = ['DE','AT','CH','HR','GB','FR','ES','IT','NL','BE','PL','DK','SE','NO','FI','US','CA','AU','JP'];
+
 countrySel.addEventListener('change', () => {
   customField.style.display = countrySel.value === '__custom' ? 'flex' : 'none';
 });
@@ -358,10 +362,11 @@ async function run(){
   setProgress(2, 'Lade Parkliste …');
 
   try{
-    const countryCode = countrySel.value === '__custom'
-      ? customInput.value.trim().toUpperCase()
-      : countrySel.value;
-    if(!countryCode) throw new Error('Bitte ein Programm-Kürzel angeben.');
+    const isWorld = countrySel.value === '__world';
+    const countryCode = isWorld
+      ? '__world'
+      : (countrySel.value === '__custom' ? customInput.value.trim().toUpperCase() : countrySel.value);
+    if(!isWorld && !countryCode) throw new Error('Bitte ein Programm-Kürzel angeben.');
 
     const limit = parseInt(document.getElementById('limit').value, 10);
     const tf = document.getElementById('timeframe').value;
@@ -377,19 +382,46 @@ async function run(){
       setStatus(`Rufzeichen-Filter aktiv (${res.source}): ${filterSet.size} Rufzeichen erkannt (z.B. ${sample} …)`);
     }
 
-    // 1) Parkliste für das Land laden
-    const parks = await fetchJson(`${API}/program/parks/${encodeURIComponent(countryCode)}`);
-    if(!Array.isArray(parks) || parks.length === 0){
-      throw new Error('Keine Parks für "' + countryCode + '" gefunden. Kürzel prüfen (z.B. DE, US, GB, JA-Prefix etc.).');
+    // 1) Parkliste(n) laden und pro Land die aktivsten Parks auswählen.
+    // (Wichtig: NICHT global über alle Länder kombiniert sortieren, sonst
+    // dominieren große Länder wie die USA und kleine Länder wie DE fallen
+    // komplett raus, obwohl dort z.B. die gefilterten Rufzeichen aktiv sind.)
+    let activated = [];
+    function topActivatedParks(parks, n){
+      return parks
+        .filter(p => (pick(p, ['activations','activationCount'], 0) > 0))
+        .sort((a,b) => pick(b,['activations','activationCount'],0) - pick(a,['activations','activationCount'],0))
+        .slice(0, n);
     }
 
-    const activated = parks
-      .filter(p => (pick(p, ['activations','activationCount'], 0) > 0))
-      .sort((a,b) => pick(b,['activations','activationCount'],0) - pick(a,['activations','activationCount'],0))
-      .slice(0, limit);
-
-    if(activated.length === 0){
-      throw new Error('Keine aktivierten Parks in diesem Programm gefunden.');
+    if(isWorld){
+      for(let i = 0; i < WORLD_COUNTRIES.length; i++){
+        const cc = WORLD_COUNTRIES[i];
+        setProgress(4 + Math.round((i/WORLD_COUNTRIES.length)*10),
+          `Lade Parkliste: Land ${i+1}/${WORLD_COUNTRIES.length} (${cc}) …`);
+        try{
+          const parks = await fetchJson(`${API}/program/parks/${encodeURIComponent(cc)}`);
+          if(Array.isArray(parks)){
+            activated = activated.concat(topActivatedParks(parks, limit));
+          }
+        }catch(e){
+          // einzelnes Land überspringen, falls Abruf fehlschlägt
+        }
+      }
+      if(activated.length === 0){
+        throw new Error('Keine Parks gefunden – Weltweit-Abfrage fehlgeschlagen.');
+      }
+    } else {
+      setProgress(4, 'Lade Parkliste …');
+      let parks = await fetchJson(`${API}/program/parks/${encodeURIComponent(countryCode)}`);
+      if(!Array.isArray(parks)) parks = [];
+      if(parks.length === 0){
+        throw new Error('Keine Parks für "' + countryCode + '" gefunden. Kürzel prüfen (z.B. DE, US, GB, JA-Prefix etc.).');
+      }
+      activated = topActivatedParks(parks, limit);
+      if(activated.length === 0){
+        throw new Error('Keine aktivierten Parks in diesem Programm gefunden.');
+      }
     }
 
     // Aggregation je Rufzeichen
@@ -406,7 +438,7 @@ async function run(){
       const ref = pick(park, ['reference','ref'], null);
       if(!ref) { done++; continue; }
 
-      setProgress(5 + Math.round((done/activated.length)*90),
+      setProgress(15 + Math.round((done/activated.length)*80),
         `Lade Aktivierungen: ${park.name || ref} (${done+1}/${activated.length})`);
 
       let acts = [];
@@ -472,7 +504,7 @@ async function run(){
     renderTable('tblQsos', [...rows].sort((a,b)=>b.qsos-a.qsos), 'qsos');
     renderSummary(rows);
 
-    resultsTitle.textContent = `Highscore – ${countryCode}` + (filterSet ? ' (gefiltert auf Rufzeichenliste)' : '');
+    resultsTitle.textContent = `Highscore – ${isWorld ? 'Weltweit' : countryCode}` + (filterSet ? ' (gefiltert auf Rufzeichenliste)' : '');
     resultsPanel.style.display = 'block';
     setProgress(100, `Fertig – ${activated.length} Parks ausgewertet, ${rows.length} Rufzeichen gefunden.`);
   }catch(err){

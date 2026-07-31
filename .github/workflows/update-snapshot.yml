@@ -2,8 +2,8 @@ name: POTA Snapshot aktualisieren
 
 on:
   schedule:
-    # Täglich um 04:15 UTC (~06:15 MESZ / 05:15 MEZ)
-    - cron: '15 4 * * *'
+    # Täglich um 08:15 UTC (~06:15 MESZ / 05:15 MEZ)
+    - cron: '15 10 * * *'
   workflow_dispatch: {}   # erlaubt manuelles Auslösen über den "Actions"-Tab
 
 permissions:
